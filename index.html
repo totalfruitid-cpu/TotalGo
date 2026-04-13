@@ -231,27 +231,36 @@ TotalGo © 2026 |
 <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <div id="tg-toast" class="tg-toast"></div>
   
-<!-- Modal Checkout Baru -->
+<!-<!-- Modal Checkout Final -->
 <div id="checkoutModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:400px;">
     <h3 style="margin-bottom:16px;font-size:18px;font-weight:bold;">Data Pesanan</h3>
-    
+
     <label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;">Nama *</label>
     <input id="namaInput" type="text" placeholder="Kak Rina" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:16px;box-sizing:border-box;">
-    
+
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <input id="isCOD" type="checkbox" onchange="toggleCOD()" style="width:18px;height:18px;">
       <label for="isCOD" style="font-size:14px;">Antar ke alamat / COD</label>
     </div>
-    
+
     <div id="codFields" style="display:none;">
       <label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;">No HP</label>
       <input id="hpInput" type="tel" placeholder="08123456789" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:16px;box-sizing:border-box;">
-      
-      <label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;">Alamat</label>
-      <textarea id="alamatInput" placeholder="
 
-  <script>
+      <label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;">Alamat</label>
+      <textarea id="alamatInput" placeholder="Jl. Cigeulis No. 1" rows="3" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;font-size:16px;resize:none;box-sizing:border-box;"></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeCheckoutModal()" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">Batal</button>
+      <button onclick="prosesPrint()" style="flex:1;padding:12px;border:none;background:#C2A878;color:#fff;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">Print</button>
+      <button onclick="submitCheckout()" style="flex:1;padding:12px;border:none;background:#25D366;color:#fff;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">WA</button>
+    </div>
+  </div>
+</div>
+
+<script>
   const produkTotalGo = [
     { id: 1, nama: "Jus Alpukat Lite", harga: 18000, gambar: "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400", deskripsi: "Porsi pas, gula dikit, cocok buat diet" },
     { id: 2, nama: "Jus Alpukat Healthy", harga: 22000, gambar: "https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?w=400", deskripsi: "Tanpa gula, pake madu + chia seed" },
@@ -290,47 +299,7 @@ TotalGo © 2026 |
   }
 
   function addToCart(name, price, event) {
-    const cartBtn = document.getElementById('tg-cart-btn');
-if (navigator.vibrate) navigator.vibrate(50);
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = 800;
-      osc.type = 'triangle';
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-      osc.start(audioCtx.currentTime);
-      osc.stop(audioCtx.currentTime + 0.08);
-    } catch(e){}
-
-    try {
-      const img = event?.target?.closest('.produk')?.querySelector('img');
-      if (img && cartBtn) {
-        const flyImg = img.cloneNode();
-        const imgRect = img.getBoundingClientRect();
-        const cartRect = cartBtn.getBoundingClientRect();
-        flyImg.className = 'fly-img';
-        flyImg.style.top = imgRect.top + 'px';
-        flyImg.style.left = imgRect.left + 'px';
-        flyImg.style.width = imgRect.width + 'px';
-        flyImg.style.height = imgRect.height + 'px';
-        document.body.appendChild(flyImg);
-        requestAnimationFrame(() => {
-          flyImg.style.top = cartRect.top + 10 + 'px';
-          flyImg.style.left = cartRect.left + 10 + 'px';
-          flyImg.style.width = '20px';
-          flyImg.style.height = '20px';
-          flyImg.style.opacity = '0';
-        });
-        setTimeout(() => flyImg.remove(), 800);
-      }
-    } catch (e) {
-      console.log('Animasi skip:', e);
-    }
-
+    if (navigator.vibrate) navigator.vibrate(50);
     const found = cart.find(item => item.name === name);
     if (found) { found.qty++; }
     else { cart.push({ name, price, qty: 1 }); }
@@ -339,7 +308,6 @@ if (navigator.vibrate) navigator.vibrate(50);
     toast.textContent = `${name} masuk keranjang ✓`;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2000);
-
     updateCartUI();
   }
 
@@ -355,190 +323,159 @@ if (navigator.vibrate) navigator.vibrate(50);
   }
 
   function checkoutWA() {
-  if (cart.length === 0) return alert('Keranjang kosong bro');
-  
-  // Load data lama kalo ada
-  const userData = JSON.parse(localStorage.getItem('tg_userdata')) || {};
-  document.getElementById('tg-nama').value = userData.nama || '';
-  document.getElementById('tg-alamat').value = userData.alamat || '';
-  document.getElementById('tg-hp').value = userData.hp || '';
-  
-  document.getElementById('tg-checkout-modal').style.display = 'flex';
-}
+    if (cart.length === 0) return alert('Keranjang kosong bro');
 
-function openCheckoutModal() {
-  if (cart.length === 0) return alert('Keranjang kosong bro!');
-  document.getElementById('checkoutModal').classList.remove('hidden');
-}
+    const userData = JSON.parse(localStorage.getItem('tg_userdata')) || {};
+    document.getElementById('namaInput').value = userData.nama || '';
+    document.getElementById('hpInput').value = userData.hp || '';
+    document.getElementById('alamatInput').value = userData.alamat || '';
+    document.getElementById('isCOD').checked = false;
+    toggleCOD();
 
-function closeCheckoutModal() {
-  document.getElementById('checkoutModal').classList.add('hidden');
-  document.getElementById('namaInput').value = '';
-  document.getElementById('isCOD').checked = false;
-  document.getElementById('hpInput').value = '';
-  document.getElementById('alamatInput').value = '';
-  toggleCOD();
-}
+    document.getElementById('checkoutModal').style.display = 'flex';
+  }
 
-function submitCheckout() {
-  const nama = document.getElementById('tg-nama').value.trim();
-  const alamat = document.getElementById('tg-alamat').value.trim();
-  const hp = document.getElementById('tg-hp').value.trim();
-  
-  if(!nama || !alamat || !hp) return alert('Lengkapin dulu bro datanya');
-  
-  // Simpen buat next checkout
-  localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
-  
-  let text = `Halo TotalGo, gw mau pesen:%0A%0A`;
-  text += `*Data Pemesan*%0A`;
-  text += `Nama: ${nama}%0A`;
-  text += `No HP: ${hp}%0A`;
-  text += `Alamat: ${alamat}%0A%0A`;
-  text += `*Pesanan*%0A`;
-  
-  cart.forEach(item => {
-    text += `- ${item.name} x${item.qty} = Rp ${(item.price * item.qty).toLocaleString('id-ID')}%0A`;
-  });
-  
-  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*`;
-  
-  closeCheckoutModal();
-  window.open(`https://wa.me/6285124441513?text=${text}`, '_blank');
-}
+  function closeCheckoutModal() {
+    document.getElementById('checkoutModal').style.display = 'none';
+    document.getElementById('namaInput').value = '';
+    document.getElementById('isCOD').checked = false;
+    document.getElementById('hpInput').value = '';
+    document.getElementById('alamatInput').value = '';
+    toggleCOD();
+  }
+
+  function toggleCOD() {
+    const cod = document.getElementById('isCOD').checked;
+    document.getElementById('codFields').style.display = cod? 'block' : 'none';
+  }
+
+  function getNomorAntrian() {
+    const today = new Date().toLocaleDateString('id-ID');
+    let data = JSON.parse(localStorage.getItem('tg_antrian') || '{}');
+    if (data.tanggal!== today) data = { tanggal: today, nomor: 0 };
+    data.nomor += 1;
+    localStorage.setItem('tg_antrian', JSON.stringify(data));
+    return `TG${String(data.nomor).padStart(3, '0')}`;
+  }
+
+  function prosesPrint() {
+    const nama = document.getElementById('namaInput').value.trim();
+    const isCOD = document.getElementById('isCOD').checked;
+    const hp = document.getElementById('hpInput').value.trim();
+    const alamat = document.getElementById('alamatInput').value.trim();
+
+    if (!nama) return alert('Nama wajib diisi bro!');
+    if (isCOD && (!hp ||!alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
+
+    localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
+
+    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'});
+    const noNota = getNomorAntrian();
+
+    let strukHTML = `
+      <html><head><title>Struk TotalGo ${noNota}</title>
+      <style>
+        @page { size: 58mm auto; margin: 0; }
+        body { font-family: monospace; font-size: 12px; width: 58mm; margin: 0; padding: 5mm; }
+       .center { text-align: center; }
+       .line { border-top: 1px dashed #000; margin: 4px 0; }
+       .row { display: flex; justify-content: space-between; }
+       .bold { font-weight: bold; }
+      </style></head><body>
+        <div class="center bold">TOTALGO</div>
+        <div class="center">@totalfruit.id</div>
+        <div class="line"></div>
+        <div>No: ${noNota}</div>
+        <div>${tanggal}</div>
+        ${isCOD? '<div class="center bold">*** ANTAR / COD ***</div>' : '<div class="center bold">*** AMBIL DI TEMPAT ***</div>'}
+        <div class="line"></div>
+        <div class="bold">${nama}</div>
+        ${hp? `<div>${hp}</div>` : ''}
+        ${isCOD && alamat? `<div>${alamat}</div>` : ''}
+        <div class="line"></div>`;
+
+    cart.forEach(item => {
+      strukHTML += `
+        <div class="bold">${item.name}</div>
+        <div class="row">
+          <span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span>
+          <span>${(item.qty * item.price).toLocaleString('id-ID')}</span>
+        </div>`;
+    });
+
+    strukHTML += `
+        <div class="line"></div>
+        <div class="row bold"><span>TOTAL</span><span>Rp ${total.toLocaleString('id-ID')}</span></div>
+        <div class="line"></div>
+        <div class="center">${isCOD? 'Siap diantar ya!' : 'Tunggu dipanggil ya!'}</div>
+        <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script>
+      </body></html>`;
+
+    closeCheckoutModal();
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(strukHTML);
+    printWindow.document.close();
+    cart = [];
+    updateCartUI();
+  }
+
+  function submitCheckout() {
+    const nama = document.getElementById('namaInput').value.trim();
+    const isCOD = document.getElementById('isCOD').checked;
+    const hp = document.getElementById('hpInput').value.trim();
+    const alamat = document.getElementById('alamatInput').value.trim();
+
+    if(!nama) return alert('Nama wajib diisi bro!');
+    if (isCOD && (!hp ||!alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
+
+    localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
+
+    let text = `Halo TotalGo, gw mau pesen:%0A%0A`;
+    text += `*Data Pemesan*%0A`;
+    text += `Nama: ${nama}%0A`;
+    if(hp) text += `No HP: ${hp}%0A`;
+    text += `${isCOD? 'Alamat: ' + alamat : 'Ambil di tempat'}%0A%0A`;
+    text += `*Pesanan*%0A`;
+
+    cart.forEach(item => {
+      text += `- ${item.name} x${item.qty} = Rp ${(item.price * item.qty).toLocaleString('id-ID')}%0A`;
+    });
+
+    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*`;
+
+    closeCheckoutModal();
+    window.open(`https://wa.me/6285124441513?text=${text}`, '_blank');
+  }
 
   function renderProduk(data = produkTotalGo) {
     const container = document.getElementById('listProduk');
     if (!container) return;
     container.innerHTML = '';
-
     if(data.length === 0){
       container.innerHTML = `<p style="text-align:center;color:#666;grid-column:1/-1;margin-top:40px;">Jus gak ketemu bro 😭</p>`;
       return;
     }
-
     data.forEach(p => {
       container.innerHTML += `
-        <div class="produk" style="border:1px solid #eee;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);background:#fff;">
-          <img src="${p.gambar}" alt="${p.nama}" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:12px;">
-          <h3 style="margin:8px 0;font-size:18px;">${p.nama}</h3>
-          <p style="font-size:14px;color:#666;margin:4px 0 8px 0;">${p.deskripsi}</p>
+        <div class="produk">
+          <img src="${p.gambar}" alt="${p.nama}">
+          <h3>${p.nama}</h3>
+          <p>${p.deskripsi}</p>
           <p style="font-weight:bold;color:#2e7d32;margin:8px 0;">Rp ${p.harga.toLocaleString('id-ID')}</p>
           <button onclick="addToCart('${p.nama}', ${p.harga}, event)" style="background:#2e7d32;color:white;border:none;padding:10px 20px;border-radius:8px;width:100%;cursor:pointer;font-weight:bold;">+ Keranjang</button>
-        </div>
-      `;
+        </div>`;
     });
   }
 
   function cariProduk() {
     const keyword = document.getElementById('searchInput').value.toLowerCase();
-    if(keyword === ''){
-      renderProduk();
-      return;
-    }
-    const hasilFilter = produkTotalGo.filter(p =>
-      p.nama.toLowerCase().includes(keyword) ||
-      p.deskripsi.toLowerCase().includes(keyword)
-    );
+    if(keyword === ''){ renderProduk(); return; }
+    const hasilFilter = produkTotalGo.filter(p => p.nama.toLowerCase().includes(keyword) || p.deskripsi.toLowerCase().includes(keyword));
     renderProduk(hasilFilter);
   }
-// 1. Fungsi buat nomer antrian TG001
-function getNomorAntrian() {
-  const today = new Date().toLocaleDateString('id-ID');
-  let data = JSON.parse(localStorage.getItem('tg_antrian') || '{}');
-  
-  if (data.tanggal !== today) {
-    data = { tanggal: today, nomor: 0 };
-  }
-  
-  data.nomor += 1;
-  localStorage.setItem('tg_antrian', JSON.stringify(data));
-  return `TG${String(data.nomor).padStart(3, '0')}`;
-}
 
-// 2. Fungsi toggle COD
-function toggleCOD() {
-  const cod = document.getElementById('isCOD').checked;
-  document.getElementById('codFields').classList.toggle('hidden', !cod);
-}
-
-// 3. Ganti printStruk() lama jadi ini
-function prosesPrint() {
-  const nama = document.getElementById('namaInput').value.trim();
-  const isCOD = document.getElementById('isCOD').checked;
-  const hp = document.getElementById('hpInput').value.trim();
-  const alamat = document.getElementById('alamatInput').value.trim();
-  
-  if (!nama) return alert('Nama wajib diisi bro!');
-  if (isCOD && (!hp || !alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
-  
-  localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
-  
-  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'});
-  const noNota = getNomorAntrian(); // TG001, bukan Date.now() lagi
-  
-  let strukHTML = `
-    <html>
-    <head>
-      <title>Struk TotalGo ${noNota}</title>
-      <style>
-        @page { size: 58mm auto; margin: 0; }
-        body { font-family: monospace; font-size: 12px; width: 58mm; margin: 0; padding: 5mm; }
-        .center { text-align: center; }
-        .line { border-top: 1px dashed #000; margin: 4px 0; }
-        .row { display: flex; justify-content: space-between; }
-        .bold { font-weight: bold; }
-      </style>
-    </head>
-    <body>
-      <div class="center bold">TOTALGO</div>
-      <div class="center">@totalfruit.id</div>
-      <div class="line"></div>
-      <div>No: ${noNota}</div>
-      <div>${tanggal}</div>
-      ${isCOD ? '<div class="center bold">*** ANTAR / COD ***</div>' : '<div class="center bold">*** AMBIL DI TEMPAT ***</div>'}
-      <div class="line"></div>
-      <div class="bold">${nama}</div>
-      ${hp ? `<div>${hp}</div>` : ''}
-      ${isCOD && alamat ? `<div>${alamat}</div>` : ''}
-      <div class="line"></div>
-  `;
-  
-  cart.forEach(item => {
-    strukHTML += `
-      <div class="bold">${item.name}</div>
-      <div class="row">
-        <span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span>
-        <span>${(item.qty * item.price).toLocaleString('id-ID')}</span>
-      </div>
-    `;
-  });
-  
-  strukHTML += `
-      <div class="line"></div>
-      <div class="row bold">
-        <span>TOTAL</span>
-        <span>Rp ${total.toLocaleString('id-ID')}</span>
-      </div>
-      <div class="line"></div>
-      <div class="center">${isCOD ? 'Siap diantar ya!' : 'Tunggu dipanggil ya!'}</div>
-      <script>
-        window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }
-      <\/script>
-    </body>
-    </html>
-  `;
-  
-  closeCheckoutModal();
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(strukHTML);
-  printWindow.document.close();
-  
-  cart = [];
-  updateCartUI();
-}
   renderProduk();
   updateCartUI();
 </script>
