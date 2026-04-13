@@ -349,15 +349,48 @@ if (navigator.vibrate) navigator.vibrate(50);
   }
 
   function checkoutWA() {
-    if (cart.length === 0) return alert('Keranjang kosong bro');
-    let text = `Halo TotalGo, gw mau pesen:%0A`;
-    cart.forEach(item => {
-      text += `- ${item.name} x${item.qty} = Rp ${(item.price * item.qty).toLocaleString('id-ID')}%0A`;
-    });
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    text += `%0ATotal: Rp ${total.toLocaleString('id-ID')}`;
-    window.open(`https://wa.me/6285124441513?text=${text}`, '_blank');
-  }
+  if (cart.length === 0) return alert('Keranjang kosong bro');
+  
+  // Load data lama kalo ada
+  const userData = JSON.parse(localStorage.getItem('tg_userdata')) || {};
+  document.getElementById('tg-nama').value = userData.nama || '';
+  document.getElementById('tg-alamat').value = userData.alamat || '';
+  document.getElementById('tg-hp').value = userData.hp || '';
+  
+  document.getElementById('tg-checkout-modal').style.display = 'flex';
+}
+
+function closeCheckoutModal() {
+  document.getElementById('tg-checkout-modal').style.display = 'none';
+}
+
+function submitCheckout() {
+  const nama = document.getElementById('tg-nama').value.trim();
+  const alamat = document.getElementById('tg-alamat').value.trim();
+  const hp = document.getElementById('tg-hp').value.trim();
+  
+  if(!nama || !alamat || !hp) return alert('Lengkapin dulu bro datanya');
+  
+  // Simpen buat next checkout
+  localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
+  
+  let text = `Halo TotalGo, gw mau pesen:%0A%0A`;
+  text += `*Data Pemesan*%0A`;
+  text += `Nama: ${nama}%0A`;
+  text += `No HP: ${hp}%0A`;
+  text += `Alamat: ${alamat}%0A%0A`;
+  text += `*Pesanan*%0A`;
+  
+  cart.forEach(item => {
+    text += `- ${item.name} x${item.qty} = Rp ${(item.price * item.qty).toLocaleString('id-ID')}%0A`;
+  });
+  
+  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*`;
+  
+  closeCheckoutModal();
+  window.open(`https://wa.me/6285124441513?text=${text}`, '_blank');
+}
 
   function renderProduk(data = produkTotalGo) {
     const container = document.getElementById('listProduk');
