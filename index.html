@@ -230,8 +230,8 @@ TotalGo © 2026 |
 
 <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <div id="tg-toast" class="tg-toast"></div>
-<audio id="tg-sfx-pop" preload="auto">
-  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_2c8d8b7a4d.mp3" type="audio/mpeg">
+<audio id="tg-sfx-pop" preload="auto" playsinline>
+  <source src="https://www.soundjay.com/buttons/sounds/button-3.mp3" type="audio/mpeg">
 </audio>
 
 <script>
@@ -275,10 +275,16 @@ TotalGo © 2026 |
  function addToCart(name, price, event) {
     const cartBtn = document.getElementById('tg-cart-btn');
     
-    // TAMBAHAN: BUNYI POP
-    const sfx = document.getElementById('tg-sfx-pop');
-    sfx.currentTime = 0;
-    sfx.play().catch(e => console.log('Audio blocked:', e));
+
+const sfx = document.getElementById('tg-sfx-pop');
+if(sfx){
+  sfx.muted = false;
+  sfx.volume = 1.0;
+  sfx.currentTime = 0;
+  const playPromise = sfx.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(e => console.log('Audio HP blocked:', e));
+  }
     
     try {
       const img = event?.target?.closest('.produk')?.querySelector('img');
