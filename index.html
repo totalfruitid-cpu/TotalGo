@@ -89,10 +89,8 @@ footer a{color:#fff;text-decoration:none}
 <h1>TotalGo</h1>
 <button id="tg-cart-btn" onclick="toggleCart()">🛒<span id="tg-cart-badge">0</span></button>
 </div>
-<div class="produk">
-<img src="jus-alpukat.jpg" alt="Jus Alpukat Premium Gold" style="width:100%;height:180px;object-fit:cover;border-radius:12px;display:block;margin-bottom:12px">
-  <h3>Jus Alpukat Premium Gold</h3>
-  <p>Rp 25.000</p>
+<main id="listProduk" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;padding:20px;">
+</main>
   <button onclick="addToCart('Jus Alpukat Premium Gold', 25000, event)">+ Keranjang</button>
 </div>
 <div id="tg-side-cart" class="tg-side-cart">
@@ -112,6 +110,29 @@ TotalGo © 2026 |
 </footer>
   <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <script>
+  const produkTotalGo = [
+  {
+    id: 1,
+    nama: "Jus Alpukat Lite",
+    harga: 18000,
+    gambar: "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400",
+    deskripsi: "Porsi pas, gula dikit, cocok buat diet"
+  },
+  {
+    id: 2,
+    nama: "Jus Alpukat Healthy", 
+    harga: 22000,
+    gambar: "https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?w=400",
+    deskripsi: "Tanpa gula, pake madu + chia seed"
+  },
+  {
+    id: 3,
+    nama: "Jus Alpukat Premium Gold",
+    harga: 25000,
+    gambar: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400", 
+    deskripsi: "Porsi jumbo, topping keju & meses"
+  }
+];
 let cart=JSON.parse(localStorage.getItem('tg_cart'))||[];
 function updateCartUI(){
 const badge=document.getElementById('tg-cart-badge');
