@@ -7,6 +7,17 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#A8B5A2">
   <style>
+.tg-cart-btn { position: fixed; top: 16px; right: 16px; font-size: 24px; background: #A8B5A2; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; z-index: 100; }
+.tg-cart-badge { position: absolute; top: -4px; right: -4px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; }
+.tg-side-cart { position: fixed; top: 0; right: -100%; width: 85%; max-width: 380px; height: 100%; background: #fff; transition: 0.3s; z-index: 999; display: flex; flex-direction: column; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+.tg-side-cart.open { right: 0; }
+.tg-cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 998; }
+.tg-cart-overlay.show { display: block; }
+.tg-side-cart-header { padding: 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; font-weight: 700; }
+.tg-cart-items { flex: 1; overflow-y: auto; padding: 16px; }
+.tg-cart-item { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.tg-side-cart-footer { padding: 16px; border-top: 1px solid #eee; }
+.tg-btn-checkout { width: 100%; padding: 12px; background: #C9A961; border: none; border-radius: 12px; font-weight: 700; }
     body{font-family:sans-serif;background:#E8EEE6;margin:0;color:#1A1A1A}
     header{background:#A8B5A2;padding:16px;text-align:center;font-weight:700;font-size:20px}
     .produk{background:#fff;margin:16px;padding:16px;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
@@ -16,30 +27,79 @@
 </head>
 <body>
   <header>TotalGo</header>
+  
+  <!-- Ikon Keranjang Ngambang -->
+  <button id="tg-cart-btn" class="tg-cart-btn">
+    🛒 <span id="tg-cart-badge" class="tg-cart-badge">0</span>
+  </button>
+
   <div class="produk">
     <h3>Jus Alpukat Premium Gold</h3>
-    <p>Sehatnya Sultan, Manisnya Pas</p>
     <p><b>Rp 28.000</b></p>
-    <button class="btn" onclick="checkout('Jus Alpukat Premium Gold - Rp 28.000')">+ Keranjang</button>
+    <button class="btn" onclick="addToCart({id: 1, name: 'Jus Alpukat Premium Gold', price: 28000})">+ Keranjang</button>
   </div>
-  <div class="cart">
-    <span>TotalGo © 2026</span>
-    <button class="btn" style="width:auto" onclick="checkoutAll()">Checkout WA</button>
+
+  <!-- Side Cart -->
+  <div id="tg-side-cart" class="tg-side-cart">
+    <div class="tg-side-cart-header">
+      <span>Keranjang Lu</span>
+      <button id="tg-close-cart">✕</button>
+    </div>
+    <div id="tg-cart-items" class="tg-cart-items"></div>
+    <div class="tg-side-cart-footer">
+      <div>Total: Rp <span id="tg-cart-total">0</span></div>
+      <button id="tg-checkout-btn" class="tg-btn-checkout" onclick="checkoutWA()">Checkout WA</button>
+    </div>
   </div>
-<script>
-  let keranjang = [];
-  function checkout(item){
-    keranjang.push(item);
-    alert(item + ' masuk keranjang!');
-  }
-  function checkoutAll(){
-    if(keranjang.length === 0){alert('Keranjang masih kosong bro');return}
-    let pesan = 'Halo TotalGo, gw mau order:%0A- ' + keranjang.join('%0A- ');
-    window.open('https://wa.me/6285124441513?text=' + pesan, '_blank');
-  }
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
+  <div id="tg-cart-overlay" class="tg-cart-overlay"></div>
+
+  <script>
+    let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
+
+    function updateCartUI() {
+      const badge = document.getElementById('tg-cart-badge');
+      const itemsEl = document.getElementById('tg-cart-items');
+      const totalEl = document.getElementById('tg-cart-total');
+      
+      badge.innerText = cart.reduce((s,i) => s + i.qty, 0);
+      itemsEl.innerHTML = cart.map(i => `
+        <div class="tg-cart-item">
+          <span>${i.name} x${i.qty}</span>
+          <span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span>
+        </div>
+      `).join('') || '<p style="text-align:center;color:#888">Keranjang masih kosong bro</p>';
+      totalEl.innerText = cart.reduce((s,i) => s + i.price * i.qty, 0).toLocaleString('id-ID');
+      localStorage.setItem('tg_cart', JSON.stringify(cart));
+    }
+
+    function addToCart(p) {
+      const ex = cart.find(i => i.id === p.id);
+      if(ex) ex.qty++; 
+      else cart.push({...p, qty: 1});
+      updateCartUI(); 
+      openCart();
+    }
+
+    function checkoutWA() {
+      if(cart.length === 0){alert('Keranjang masih kosong bro'); return}
+      let pesan = 'Halo TotalGo, gw mau order:%0A- ' + cart.map(i => `${i.name} x${i.qty} = Rp ${(i.price * i.qty).toLocaleString('id-ID')}`).join('%0A- ');
+      window.open('https://wa.me/6285124441513?text=' + pesan, '_blank');
+    }
+
+    const sideCart = document.getElementById('tg-side-cart');
+    const overlay = document.getElementById('tg-cart-overlay');
+    function openCart() { sideCart.classList.add('open'); overlay.classList.add('show'); }
+    function closeCart() { sideCart.classList.remove('open'); overlay.classList.remove('show'); }
+
+    document.getElementById('tg-cart-btn').onclick = openCart;
+    document.getElementById('tg-close-cart').onclick = closeCart;
+    overlay.onclick = closeCart;
+    
+    updateCartUI();
+
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
 </body>
 </html>
