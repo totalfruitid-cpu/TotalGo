@@ -91,8 +91,6 @@ footer a{color:#fff;text-decoration:none}
 </div>
 <main id="listProduk" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;padding:20px;">
 </main>
-  <button onclick="addToCart('Jus Alpukat Premium Gold', 25000, event)">+ Keranjang</button>
-</div>
 <div id="tg-side-cart" class="tg-side-cart">
 <div class="tg-side-cart-header">
 <h3>Keranjang Lu</h3>
@@ -219,7 +217,27 @@ const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
 text+=`%0ATotal: Rp ${total.toLocaleString('id-ID')}`;
 window.open(`https://wa.me/6285124441513?text=${text}`,'_blank');
 }
-updateCartUI();
+    }
+
+  function renderProduk() {
+    const container = document.getElementById('listProduk');
+    if(!container) return;
+    container.innerHTML = ''; 
+    produkTotalGo.forEach(p => {
+      container.innerHTML += `
+        <div class="produk" style="border:1px solid #eee;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <img src="${p.gambar}" alt="${p.nama}" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:12px;">
+          <h3 style="margin:8px 0;font-size:18px;">${p.nama}</h3>
+          <p style="font-size:14px;color:#666;margin:4px 0 8px 0;">${p.deskripsi}</p>
+          <p style="font-weight:bold;color:#2e7d32;margin:8px 0;">Rp ${p.harga.toLocaleString('id-ID')}</p>
+          <button onclick="addToCart('${p.nama}', ${p.harga})" style="background:#2e7d32;color:white;border:none;padding:10px 20px;border-radius:8px;width:100%;cursor:pointer;font-weight:bold;">+ Keranjang</button>
+        </div>
+      `;
+    });
+  }
+
+  renderProduk();   
+  updateCartUI();   
 </script>
 </body>
 </html>
