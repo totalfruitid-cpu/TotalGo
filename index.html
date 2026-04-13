@@ -230,6 +230,20 @@ TotalGo © 2026 |
 
 <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <div id="tg-toast" class="tg-toast"></div>
+  
+  <div id="tg-checkout-modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:400px;">
+    <h3 style="margin-bottom:16px;font-size:18px;">Data Pengiriman</h3>
+    <input id="tg-nama" type="text" placeholder="Nama Lengkap" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:16px;">
+    <textarea id="tg-alamat" placeholder="Alamat Lengkap" rows="3" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:16px;resize:none;"></textarea>
+    <input id="tg-hp" type="tel" placeholder="No. WhatsApp" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:16px;font-size:16px;">
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeCheckoutModal()" style="flex:1;padding:12px;border:1px solid #ddd;background:#fff;border-radius:8px;font-weight:600;font-size:14px;">Batal</button>
+      <button onclick="printStruk()" style="flex:1;padding:12px;border:none;background:#C2A878;color:#fff;border-radius:8px;font-weight:600;font-size:14px;">Print</button>
+      <button onclick="submitCheckout()" style="flex:1;padding:12px;border:none;background:#25D366;color:#fff;border-radius:8px;font-weight:600;font-size:14px;">WA</button>
+    </div>
+  </div>
+</div>
 
 <script>
   const produkTotalGo = [
@@ -380,7 +394,75 @@ if (navigator.vibrate) navigator.vibrate(50);
     );
     renderProduk(hasilFilter);
   }
-
+function printStruk() {
+  const nama = document.getElementById('tg-nama').value.trim();
+  const alamat = document.getElementById('tg-alamat').value.trim();
+  const hp = document.getElementById('tg-hp').value.trim();
+  
+  if(!nama || !alamat || !hp) return alert('Lengkapin dulu bro datanya');
+  
+  localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
+  
+  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'long', timeStyle:'short'});
+  const noNota = 'TG' + Date.now().toString().slice(-6);
+  
+  let strukHTML = `
+    <html>
+    <head>
+      <title>Struk TotalGo ${noNota}</title>
+      <style>
+        @page { size: 58mm auto; margin: 0; }
+        body { font-family: monospace; font-size: 12px; width: 58mm; margin: 0; padding: 5mm; }
+        .center { text-align: center; }
+        .line { border-top: 1px dashed #000; margin: 4px 0; }
+        .row { display: flex; justify-content: space-between; }
+        .bold { font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="center bold">TOTALGO</div>
+      <div class="center">@totalfruit.id</div>
+      <div class="line"></div>
+      <div>No: ${noNota}</div>
+      <div>${tanggal}</div>
+      <div class="line"></div>
+      <div class="bold">${nama}</div>
+      <div>${hp}</div>
+      <div>${alamat}</div>
+      <div class="line"></div>
+  `;
+  
+  cart.forEach(item => {
+    strukHTML += `
+      <div class="bold">${item.name}</div>
+      <div class="row">
+        <span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span>
+        <span>${(item.qty * item.price).toLocaleString('id-ID')}</span>
+      </div>
+    `;
+  });
+  
+  strukHTML += `
+      <div class="line"></div>
+      <div class="row bold">
+        <span>TOTAL</span>
+        <span>Rp ${total.toLocaleString('id-ID')}</span>
+      </div>
+      <div class="line"></div>
+      <div class="center">Terima kasih!</div>
+      <script>
+        window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }
+      <\/script>
+    </body>
+    </html>
+  `;
+  
+  closeCheckoutModal();
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(strukHTML);
+  printWindow.document.close();
+}
   renderProduk();
   updateCartUI();
 </script>
