@@ -5,10 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TotalGo</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
-body{background:#E8F0ED;min-height:100vh;display:flex;flex-direction:column}
-.header{background:#C5D8D1;text-align:center;padding:15px 20px;position:relative;overflow:visible}
-.header h1{font-size:22px;font-weight:600;color:#000}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#F7F7F7;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column
+}
+
+/* HEADER PUTIH BERSIH */
+.header{
+  background:#fff;
+  padding:16px 20px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  position:sticky;
+  top:0;
+  z-index:10;
+  text-align:center;
+}
+.header h1{
+  font-size:22px;
+  color:#C2A878; /* WARNA GOLD TOTALGO */
+  font-weight:600;
+}
+
+/* TOMBOL KERANJANG */
 #tg-cart-btn{
   position:absolute;
   top:12px;
@@ -20,32 +42,88 @@ body{background:#E8F0ED;min-height:100vh;display:flex;flex-direction:column}
   font-size:26px;
   line-height:1;
 }
-#tg-cart-badge{position:absolute;top:-5px;right:-8px;background:#FF3B30;color:#fff;font-size:12px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+#tg-cart-badge{
+  position:absolute;
+  top:-5px;
+  right:-5px;
+  background:#FF3B30;
+  color:#fff;
+  font-size:12px;
+  font-weight:bold;
+  border-radius:50%;
+  width:18px;
+  height:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* KONTEN */
 .main-content{flex:1;padding:20px}
-.produk{background:#fff;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.produk h2{font-size:20px;margin-bottom:8px}
-.produk p{color:#555;margin-bottom:12px}
-.harga{font-size:18px;font-weight:bold;margin-bottom:16px}
-.btn-keranjang{width:100%;background:#C2A878;color:#fff;border:none;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
-.tg-side-cart{position:fixed;top:0;right:-100%;width:85%;max-width:380px;height:100%;background:#fff;box-shadow:-4px 0 15px rgba(0,0,0,0.2);transition:right 0.3s ease;z-index:1001;display:flex;flex-direction:column}
-.tg-side-cart.open{right:0}
-.tg-side-cart-header{padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
-.tg-side-cart-header h3{font-size:18px}
-.tg-side-cart-close{background:none;border:none;font-size:24px;cursor:pointer}
-.tg-cart-items{flex:1;overflow-y:auto;padding:16px}
-.tg-cart-empty{text-align:center;color:#888;margin-top:40px}
-.tg-side-cart-footer{padding:16px;border-top:1px solid #eee}
-.tg-btn-checkout{width:100%;background:#25D366;color:#fff;border:none;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
-.tg-cart-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:none}
-.tg-cart-overlay.open{display:block}
-.tg-cart-item{display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f0f0f0}
-.tg-cart-item-info{flex:1}
-.tg-cart-item-name{font-weight:600;margin-bottom:4px}
-.tg-cart-item-price{color:#555;font-size:14px}
-.tg-cart-item-qty{display:flex;align-items:center;gap:8px}
-.tg-cart-item-qty button{width:24px;height:24px;border:1px solid #ddd;background:#f9f9f9;border-radius:6px;cursor:pointer}
-footer{background:#1A1A1A;color:#fff;text-align:center;padding:20px;font-size:14px;margin-top:auto}
+.produk{
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.produk h2{font-size:18px;margin-bottom:4px}
+.produk p{font-size:14px;color:#666;margin-bottom:12px}
+.harga{
+  font-size:20px;
+  font-weight:bold;
+  color:#C2A878; /* HARGA WARNA GOLD */
+  margin-bottom:12px;
+}
+.btn-keranjang{
+  width:100%;
+  background:#C2A878; /* TOMBOL GOLD */
+  color:#fff;
+  border:none;
+  padding:14px;
+  border-radius:12px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* FOOTER HITAM */
+footer{
+  background:#1A1A1A;
+  color:#fff;
+  text-align:center;
+  padding:20px;
+  font-size:14px;
+  margin-top:auto;
+}
 footer a{color:#fff;text-decoration:none}
+
+/* ANIMASI TERBANG KE KERANJANG */
+.tg-fly-img{
+  position:fixed;
+  z-index:9999;
+  border-radius:12px;
+  pointer-events:none;
+  transition:all 0.7s cubic-bezier(0.5,-0.5,1,1);
+  opacity:0.8;
+  background:#C2A878;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:14px;
+}
+
+@keyframes tg-shake{
+  0%,100%{transform:rotate(0deg) scale(1)}
+  25%{transform:rotate(-8deg) scale(1.1)}
+  75%{transform:rotate(8deg) scale(1.1)}
+}
+
+#tg-cart-btn.shake{
+  animation:tg-shake 0.4s ease-in-out;
+}
 </style>
 </head>
 <body>
@@ -110,16 +188,39 @@ const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
 totalSpan.textContent=total.toLocaleString('id-ID');
 localStorage.setItem('tg_cart',JSON.stringify(cart));
 }
-function addToCart(name,price){
-const found=cart.find(item=>item.name===name);
-if(found){found.qty++;}else{cart.push({name,price,qty:1});}
-updateCartUI();
-toggleCart();
-}
-function updateQty(index,change){
-cart[index].qty+=change;
-if(cart[index].qty<=0)cart.splice(index,1);
-updateCartUI();
+function addToCart(name, price, btnElement){
+  const btnRect = btnElement.getBoundingClientRect();
+  const cartBtn = document.getElementById('tg-cart-btn');
+  const cartRect = cartBtn.getBoundingClientRect();
+  
+  const flyImg = document.createElement('div');
+  flyImg.className = 'tg-fly-img';
+  flyImg.style.left = btnRect.left + btnRect.width/2 - 20 + 'px';
+  flyImg.style.top = btnRect.top + 'px';
+  flyImg.style.width = '40px';
+  flyImg.style.height = '40px';
+  flyImg.textContent = '+1';
+  document.body.appendChild(flyImg);
+
+  setTimeout(() => {
+    flyImg.style.left = cartRect.left + 5 + 'px';
+    flyImg.style.top = cartRect.top + 5 + 'px';
+    flyImg.style.width = '20px';
+    flyImg.style.height = '20px';
+    flyImg.style.opacity = '0';
+    flyImg.style.transform = 'scale(0.2)';
+  }, 10);
+
+  setTimeout(() => {
+    flyImg.remove();
+    cartBtn.classList.add('shake');
+    setTimeout(() => cartBtn.classList.remove('shake'), 400);
+  }, 700);
+
+  const found = cart.find(item => item.name === name);
+  if(found){found.qty++;}else{cart.push({name,price,qty:1});}
+  updateCartUI();
+  toggleCart();
 }
 function toggleCart(){
 document.getElementById('tg-side-cart').classList.toggle('open');
