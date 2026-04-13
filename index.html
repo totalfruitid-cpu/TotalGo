@@ -275,6 +275,13 @@ TotalGo © 2026 |
     const found = cart.find(item => item.name === name);
     if (found) { found.qty++; }
     else { cart.push({ name, price, qty: 1 }); }
+    
+    // TEMPEL 4 BARIS INI DI SINI
+    const toast = document.getElementById('tg-toast');
+    toast.textContent = `${name} masuk keranjang ✓`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+    
     updateCartUI();
   }
 
