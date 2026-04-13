@@ -132,7 +132,28 @@ footer a{color:#fff;text-decoration:none}
   pointer-events: none;
   object-fit: cover;
   transition: all 0.8s cubic-bezier(0.2, 1, 0.3, 1);
-} /* <-- GUA TUTUP DI SINI. INI BIANG KEROKNYA */
+} 
+  .tg-toast{
+  position:fixed;
+  bottom:90px;
+  left:50%;
+  transform:translateX(-50%) translateY(100px);
+  background:#1A1A1A;
+  color:#fff;
+  padding:12px 20px;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:500;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+  z-index:9999;
+  opacity:0;
+  transition:all 0.3s ease;
+  pointer-events:none;
+}
+.tg-toast.show{
+  transform:translateX(-50%) translateY(0);
+  opacity:1;
+}
 
 .produk {
   background: white;
@@ -206,7 +227,9 @@ footer a{color:#fff;text-decoration:none}
 TotalGo © 2026 |
 <a href="https://instagram.com/totalfruit.id" target="_blank">@totalfruit.id</a>
 </footer>
-  <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
+
+<div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
+<div id="tg-toast" class="tg-toast"></div>
 
 <script>
   const produkTotalGo = [
@@ -276,7 +299,6 @@ TotalGo © 2026 |
     if (found) { found.qty++; }
     else { cart.push({ name, price, qty: 1 }); }
     
-    // TEMPEL 4 BARIS INI DI SINI
     const toast = document.getElementById('tg-toast');
     toast.textContent = `${name} masuk keranjang ✓`;
     toast.classList.add('show');
