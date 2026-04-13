@@ -240,6 +240,19 @@ TotalGo © 2026 |
   ];
 
   let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
+  let audioUnlocked = false;
+
+  // UNLOCK AUDIO BUAT HP
+  document.body.addEventListener('touchstart', function(){
+    if(!audioUnlocked){
+      const sfx = document.getElementById('tg-sfx-pop');
+      sfx.play().then(() => {
+        sfx.pause();
+        sfx.currentTime = 0;
+        audioUnlocked = true;
+      }).catch(()=>{});
+    }
+  }, {once: true});
 
   function updateCartUI() {
     const badge = document.getElementById('tg-cart-badge');
@@ -270,20 +283,16 @@ TotalGo © 2026 |
     localStorage.setItem('tg_cart', JSON.stringify(cart));
   }
 
- function addToCart(name, price, event) {
+  function addToCart(name, price, event) {
     const cartBtn = document.getElementById('tg-cart-btn');
-    
 
-const sfx = document.getElementById('tg-sfx-pop');
-if(sfx){
-  sfx.muted = false;
-  sfx.volume = 1.0;
-  sfx.currentTime = 0;
-  const playPromise = sfx.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(e => console.log('Audio HP blocked:', e));
-  }
-}
+    // BUNYI POP
+    const sfx = document.getElementById('tg-sfx-pop');
+    if(sfx){
+      sfx.currentTime = 0;
+      sfx.play().catch(e => {});
+    }
+
     try {
       const img = event?.target?.closest('.produk')?.querySelector('img');
       if (img && cartBtn) {
@@ -308,15 +317,16 @@ if(sfx){
     } catch (e) {
       console.log('Animasi skip:', e);
     }
+
     const found = cart.find(item => item.name === name);
     if (found) { found.qty++; }
     else { cart.push({ name, price, qty: 1 }); }
-    
+
     const toast = document.getElementById('tg-toast');
     toast.textContent = `${name} masuk keranjang ✓`;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2000);
-    
+
     updateCartUI();
   }
 
@@ -377,7 +387,8 @@ if(sfx){
     );
     renderProduk(hasilFilter);
   }
-renderProduk();
+
+  renderProduk();
   updateCartUI();
 </script>
 </body>
