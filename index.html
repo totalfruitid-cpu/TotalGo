@@ -1,317 +1,131 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TotalGo</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:#F7F7F7;
-  min-height:100vh;
-  display:flex;
-  flex-direction:column
-}
-
-/* HEADER PUTIH BERSIH */
-.header{
-  background:#fff;
-  padding:16px 20px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.06);
-  position:sticky;
-  top:0;
-  z-index:10;
-  text-align:center;
-}
-.header h1{
-  font-size:22px;
-  color:#C2A878; /* WARNA GOLD TOTALGO */
-  font-weight:600;
-}
-
-/* TOMBOL KERANJANG */
-#tg-cart-btn{
-  position:absolute;
-  top:12px;
-  right:20px;
-  background:none;
-  border:none;
-  cursor:pointer;
-  z-index:10;
-  font-size:26px;
-  line-height:1;
-}
-#tg-cart-badge{
-  position:absolute;
-  top:-5px;
-  right:-5px;
-  background:#FF3B30;
-  color:#fff;
-  font-size:12px;
-  font-weight:bold;
-  border-radius:50%;
-  width:18px;
-  height:18px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-/* KONTEN */
-.main-content{flex:1;padding:20px}
-.produk{
-  background:#fff;
-  border-radius:16px;
-  padding:20px;
-  margin-bottom:16px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.05);
-}
-.produk h2{font-size:18px;margin-bottom:4px}
-.produk p{font-size:14px;color:#666;margin-bottom:12px}
-.harga{
-  font-size:20px;
-  font-weight:bold;
-  color:#C2A878; /* HARGA WARNA GOLD */
-  margin-bottom:12px;
-}
-.btn-keranjang{
-  width:100%;
-  background:#C2A878; /* TOMBOL GOLD */
-  color:#fff;
-  border:none;
-  padding:14px;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-/* FOOTER HITAM */
-footer{
-  background:#1A1A1A;
-  color:#fff;
-  text-align:center;
-  padding:20px;
-  font-size:14px;
-  margin-top:auto;
-}
-footer a{color:#fff;text-decoration:none}
-
-/* ANIMASI TERBANG KE KERANJANG */
-.tg-fly-img{
-  position:fixed;
-  z-index:9999;
-  border-radius:12px;
-  pointer-events:none;
-  transition:all 0.7s cubic-bezier(0.5,-0.5,1,1);
-  opacity:0.8;
-  background:#C2A878;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  font-size:14px;
-}
-
-@keyframes tg-shake{
-  0%,100%{transform:rotate(0deg) scale(1)}
-  25%{transform:rotate(-8deg) scale(1.1)}
-  75%{transform:rotate(8deg) scale(1.1)}
-}
-
-#tg-cart-btn.shake{
-  animation:tg-shake 0.4s ease-in-out;
-}
-
-#tg-side-cart{
-  position:fixed;
-  top:0;
-  right:-400px;
-  width:360px;
-  max-width:90%;
-  height:100%;
-  background:#fff;
-  box-shadow:-4px 0 20px rgba(0,0,0,0.15);
-  transition:right 0.3s ease;
-  z-index:999;
-  display:flex;
-  flex-direction:column;
-}
-#tg-side-cart.active{right:0;}
-#tg-side-cart-header{
-  padding:20px;
-  border-bottom:1px solid #eee;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-#tg-side-cart-header h3{margin:0;font-size:18px;}
-#tg-side-cart-close{
-  background:none;
-  border:none;
-  font-size:24px;
-  cursor:pointer;
-}
-#tg-side-cart-body{
-  flex:1;
-  overflow-y:auto;
-  padding:16px 20px;
-}
-#tg-side-cart-footer{
-  padding:20px;
-  border-top:1px solid #eee;
-}
-#tg-side-cart-items .cart-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-  font-size:14px;
-}
-#tg-side-cart-items .qty-btn{
-  background:#eee;
-  border:none;
-  width:24px;
-  height:24px;
-  border-radius:6px;
-  cursor:pointer;
-  margin:0 4px;
-}
-#tg-checkout-btn{
-  width:100%;
-  background:#25D366;
-  color:#fff;
-  border:none;
-  padding:14px;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TotalGo</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:sans-serif}
+    .header{background:#d4a373;padding:12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+    .header h1{font-size:20px;color:white}
+    #tg-cart-btn{position:relative;background:none;border:none;font-size:24px}
+    #tg-cart-badge{position:absolute;top:-5px;right:-8px;background:red;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;text-align:center}
+    
+    /* SIDE CART CSS */
+    #tg-side-cart{position:fixed;top:0;right:-400px;width:360px;max-width:90vw;height:100vh;background:#fff;box-shadow:-2px 0 10px rgba(0,0,0,.2);z-index:1000;display:flex;flex-direction:column;transition:right .3s ease}
+    #tg-side-cart.open{right:0}
+    #tg-side-cart-header{padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+    #tg-side-cart-header h3{font-size:18px}
+    #tg-side-cart-close{background:none;border:none;font-size:28px;line-height:1;cursor:pointer}
+    #tg-side-cart-body{flex:1;overflow-y:auto;padding:16px}
+    #tg-side-cart-footer{padding:16px;border-top:1px solid #eee}
+    #tg-checkout-btn{width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px}
+    .tg-cart-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.4);z-index:999;display:none}
+    .tg-cart-overlay.show{display:block}
+    
+    .main-content{padding:16px}
+    .produk{border:1px solid #ddd;padding:12px;margin-bottom:12px;border-radius:8px}
+  </style>
 </head>
 <body>
-<div class="header">
-<h1>TotalGo</h1>
-<button id="tg-cart-btn" onclick="toggleCart()">
-🛒
-<span id="tg-cart-badge">0</span>
-</button>
-</div>
+  <div class="header">
+    <h1>TotalGo</h1>
+    <button id="tg-cart-btn" onclick="toggleCart()">
+      🛒
+      <span id="tg-cart-badge">0</span>
+    </button>
+  </div>
 
-</div>
-<!-- SIDE CART TOTALGO FINAL V3 -->
-<div id="tg-side-cart">
-  <div id="tg-side-cart-header">
-    <h3>Keranjang Lu</h3>
-    <button id="tg-side-cart-close" onclick="toggleCart()">×</button>
-  </div>
-  <div id="tg-side-cart-body">
-    <div id="tg-side-cart-items"></div>
-  </div>
-  <div id="tg-side-cart-footer">
-    <div style="margin-bottom:12px;font-weight:bold;font-size:16px;">
-      Total: Rp <span id="tg-side-cart-total">0</span>
+  <!-- SIDE CART TOTALGO FINAL V3 -->
+  <div id="tg-side-cart">
+    <div id="tg-side-cart-header">
+      <h3>Keranjang Lu</h3>
+      <button id="tg-side-cart-close" onclick="toggleCart()">×</button>
     </div>
-    <button id="tg-checkout-btn" onclick="checkoutWA()">Checkout WA</button>
+    <div id="tg-side-cart-body">
+      <div id="tg-side-cart-items"></div>
+    </div>
+    <div id="tg-side-cart-footer">
+      <div style="margin-bottom:12px;font-weight:bold;font-size:16px;">
+        Total: Rp <span id="tg-side-cart-total">0</span>
+      </div>
+      <button id="tg-checkout-btn" onclick="checkoutWA()">Checkout WA</button>
+    </div>
+  <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
+
+  <div class="main-content">
+    <div class="produk">
+      <h3>Apel Fuji Test</h3>
+      <p>Rp 25.000</p>
+      <button onclick="addToCart('Apel Fuji Test', 25000)">+ Keranjang</button>
+    </div>
+    <div class="produk">
+      <h3>Jeruk Test</h3>
+      <p>Rp 20.000</p>
+      <button onclick="addToCart('Jeruk Test', 20000)">+ Keranjang</button>
+    </div>
   </div>
-</div>
-<div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 
-<div class="main-content">
-  <!-- ISI PRODUK LU BIARIN AJA KAYAK BIASA -->
-  <!-- Contoh: -->
-  <!-- <div class="produk">...</div> -->
-  <!-- <div class="produk">...</div> -->
-  <!-- Pokoknya semua produk lu masuk sini -->
-</div>
+  <footer style="text-align:center;padding:20px;background:#f5f5f5;">
+    TotalGo © 2026
+  </footer>
 
-<footer>
-TotalGo © 2026 |
-<a href="https://instagram.com/totalfruit.id" target="_blank">@totalfruit.id</a>
-</footer>
-
-<script>
-let cart=JSON.parse(localStorage.getItem('tg_cart'))||[];
-function updateCartUI(){
-const badge=document.getElementById('tg-cart-badge');
-const itemsDiv=document.getElementById('tg-cart-items');
-const totalSpan=document.getElementById('tg-cart-total');
-const totalQty=cart.reduce((sum,item)=>sum+item.qty,0);
-badge.textContent=totalQty;
-badge.style.display=totalQty>0?'flex':'none';
-if(cart.length===0){
-itemsDiv.innerHTML='<div class="tg-cart-empty">Keranjang masih kosong bro</div>';
-}else{
-itemsDiv.innerHTML=cart.map((item,i)=>`
-<div class="tg-cart-item">
-<div class="tg-cart-item-info">
-<div class="tg-cart-item-name">${item.name}</div>
-<div class="tg-cart-item-price">Rp ${item.price.toLocaleString('id-ID')}</div>
-</div>
-<div class="tg-cart-item-qty">
-<button onclick="updateQty(${i},-1)">-</button>
-<span>${item.qty}</span>
-<button onclick="updateQty(${i},1)">+</button>
-</div>
-</div>
-`).join('');
-}
-const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
-totalSpan.textContent=total.toLocaleString('id-ID');
-localStorage.setItem('tg_cart',JSON.stringify(cart));
-}
-function addToCart(name, price, btnElement){
-  const btnRect = btnElement.getBoundingClientRect();
-  const cartBtn = document.getElementById('tg-cart-btn');
-  const cartRect = cartBtn.getBoundingClientRect();
-  
-  const flyImg = document.createElement('div');
-  flyImg.className = 'tg-fly-img';
-  flyImg.style.left = btnRect.left + btnRect.width/2 - 20 + 'px';
-  flyImg.style.top = btnRect.top + 'px';
-  flyImg.style.width = '40px';
-  flyImg.style.height = '40px';
-  flyImg.textContent = '+1';
-  document.body.appendChild(flyImg);
-
-  setTimeout(() => {
-    flyImg.style.left = cartRect.left + 5 + 'px';
-    flyImg.style.top = cartRect.top + 5 + 'px';
-    flyImg.style.width = '20px';
-    flyImg.style.height = '20px';
-    flyImg.style.opacity = '0';
-    flyImg.style.transform = 'scale(0.2)';
-  }, 10);
-
-  setTimeout(() => {
-    flyImg.remove();
-    cartBtn.classList.add('shake');
-    setTimeout(() => cartBtn.classList.remove('shake'), 400);
-  }, 700);
-
-  const found = cart.find(item => item.name === name);
-  if(found){found.qty++;}else{cart.push({name,price,qty:1});}
-  updateCartUI();
-  toggleCart();
-}
-function toggleCart(){
-document.getElementById('tg-side-cart').classList.toggle('open');
-document.getElementById('tg-cart-overlay').classList.toggle('open');
-}
-function checkoutWA(){
-if(cart.length===0)return alert('Keranjang kosong bro');
-let text=`Halo TotalGo, gw mau pesen:%0A`;
-cart.forEach(item=>{
-text+=`- ${item.name} x${item.qty} = Rp ${(item.price*item.qty).toLocaleString('id-ID')}%0A`;
-});
-const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
-text+=`%0ATotal: Rp ${total.toLocaleString('id-ID')}`;
-window.open(`https://wa.me/6285124441513?text=${text}`,'_blank');
-}
-updateCartUI();
-</script>
+  <script>
+    let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
+    
+    function toggleCart(){
+      document.getElementById('tg-side-cart').classList.toggle('open');
+      document.getElementById('tg-cart-overlay').classList.toggle('show');
+    }
+    
+    function updateCartUI(){
+      const badge = document.getElementById('tg-cart-badge');
+      const items = document.getElementById('tg-side-cart-items');
+      const total = document.getElementById('tg-side-cart-total');
+      let totalHarga = 0;
+      let totalItem = 0;
+      
+      items.innerHTML = '';
+      cart.forEach((item, i) => {
+        totalHarga += item.price * item.qty;
+        totalItem += item.qty;
+        items.innerHTML += `<div style="margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
+          ${item.name} x${item.qty} - Rp ${item.price * item.qty}
+        </div>`;
+      });
+      
+      badge.innerText = totalItem;
+      total.innerText = totalHarga.toLocaleString('id-ID');
+      localStorage.setItem('tg_cart', JSON.stringify(cart));
+    }
+    
+    function addToCart(name, price){
+      const exist = cart.find(i => i.name === name);
+      if(exist){
+        exist.qty++;
+      } else {
+        cart.push({name: name, price: price, qty: 1});
+      }
+      updateCartUI();
+      toggleCart();
+    }
+    
+    function checkoutWA(){
+      if(cart.length === 0){
+        alert('Keranjang masih kosong bro');
+        return;
+      }
+      let text = 'Halo TotalGo, gua mau order:%0A';
+      cart.forEach(i => {
+        text += `- ${i.name} x${i.qty} = Rp ${(i.price * i.qty).toLocaleString('id-ID')}%0A`;
+      });
+      let totalHarga = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+      text += `%0ATotal: Rp ${totalHarga.toLocaleString('id-ID')}`;
+      window.open(`https://wa.me/6281234567890?text=${text}`, '_blank');
+    }
+    
+    updateCartUI();
+  </script>
 </body>
 </html>
