@@ -105,11 +105,12 @@ footer a{color:#fff;text-decoration:none}
 <div style="margin-bottom:12px;font-weight:600">Total: Rp <span id="tg-cart-total">0</span></div>
 <button class="tg-btn-checkout" onclick="checkoutWA()">Checkout WA</button>
 </div>
-<div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
+</div>
 <footer>
 TotalGo © 2026 |
 <a href="https://instagram.com/totalfruit.id" target="_blank">@totalfruit.id</a>
 </footer>
+  <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <script>
 let cart=JSON.parse(localStorage.getItem('tg_cart'))||[];
 function updateCartUI(){
