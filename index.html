@@ -143,20 +143,19 @@
   }
 
   function checkoutWA(){
-    if(cart.length === 0){
-      alert('Keranjang masih kosong bro');
-      return;
-    }
-    let text = 'Halo TotalGo, gua mau order:%0A';
-    cart.forEach(i => {
-      text += `- ${i.name} x${i.qty} = Rp ${(i.price * i.qty).toLocaleString('id-ID')}%0A`;
-    });
-    let totalHarga = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-    text += `%0ATotal: Rp ${totalHarga.toLocaleString('id-ID')}`;
-    window.open(`https://wa.me/6281234567890?text=${text}`, '_blank');
+  if(cart.length === 0){
+    alert('Keranjang masih kosong bro');
+    return;
   }
-
-  updateCartUI();
-</script>
+  let text = 'Halo TotalGo, gua mau order:%0A';
+  for(let i=0; i<cart.length; i++){
+    let item = cart[i];
+    text += '- ' + item.name + ' x' + item.qty + ' = Rp ' + (item.price * item.qty).toLocaleString('id-ID') + '%0A';
+  }
+  let totalHarga = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  text += '%0ATotal: Rp ' + totalHarga.toLocaleString('id-ID');
+  window.open('https://wa.me/6281234567890?text=' + text, '_blank');
+}
+<script>
 </body>
 </html>
