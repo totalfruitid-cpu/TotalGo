@@ -6,9 +6,37 @@
 <title>TotalGo</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
-body{background:#E8F0ED;min-height:100vh;display:flex;flex-direction:column}
 
-.header{background:#C5D8D1;text-align:center;padding:15px 20px;position:fixed;overflow:visible}
+body{
+  background:#E8F0ED;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding-top:80px;
+  padding-bottom:70px;
+}
+
+main{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:20px;
+  padding:20px;
+  margin-top:0; 
+}
+
+.header{
+  background:#C5D8D1;
+  text-align:center;
+  padding:15px 20px;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  z-index:999;
+  overflow:visible;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+
 .header h1{font-size:22px;font-weight:600;color:#000}
 #tg-cart-btn{position:absolute;top:12px;right:20px;background:none;border:none;cursor:pointer;z-index:10;color:#000}
 #tg-cart-btn svg{width:28px;height:28px;display:block}
