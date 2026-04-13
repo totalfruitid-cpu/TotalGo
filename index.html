@@ -124,7 +124,7 @@ footer a{color:#fff;text-decoration:none}
 #tg-cart-btn.shake{
   animation:tg-shake 0.4s ease-in-out;
 }
-/* SIDE CART SLIDE */
+
 #tg-side-cart{
   position:fixed;
   top:0;
@@ -166,7 +166,18 @@ footer a{color:#fff;text-decoration:none}
 #tg-side-cart-items .cart-item{
   display:flex;
   justify-content:space-between;
+  align-items:center;
   margin-bottom:12px;
+  font-size:14px;
+}
+#tg-side-cart-items .qty-btn{
+  background:#eee;
+  border:none;
+  width:24px;
+  height:24px;
+  border-radius:6px;
+  cursor:pointer;
+  margin:0 4px;
 }
 #tg-checkout-btn{
   width:100%;
@@ -189,74 +200,22 @@ footer a{color:#fff;text-decoration:none}
 <span id="tg-cart-badge">0</span>
 </button>
 </div>
-/* SIDE CART SLIDE */
-#tg-side-cart{
-  position:fixed;
-  top:0;
-  right:-400px;
-  width:360px;
-  max-width:90%;
-  height:100%;
-  background:#fff;
-  box-shadow:-4px 0 20px rgba(0,0,0,0.15);
-  transition:right 0.3s ease;
-  z-index:999;
-  display:flex;
-  flex-direction:column;
-}
-#tg-side-cart.active{
-  right:0;
-}
-#tg-side-cart-header{
-  padding:20px;
-  border-bottom:1px solid #eee;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-#tg-side-cart-header h3{
-  margin:0;
-  font-size:18px;
-}
-#tg-side-cart-close{
-  background:none;
-  border:none;
-  font-size:24px;
-  cursor:pointer;
-}
-#tg-side-cart-body{
-  flex:1;
-  overflow-y:auto;
-  padding:16px 20px;
-}
-#tg-side-cart-footer{
-  padding:20px;
-  border-top:1px solid #eee;
-}
-#tg-side-cart-items .cart-item{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:12px;
-}
-#tg-side-cart-items .qty-btn{
-  background:#eee;
-  border:none;
-  width:24px;
-  height:24px;
-  border-radius:6px;
-  cursor:pointer;
-}
-#tg-checkout-btn{
-  width:100%;
-  background:#25D366;
-  color:#fff;
-  border:none;
-  padding:14px;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:bold;
-  cursor:pointer;
-}
+
+<div id="tg-side-cart">
+  <div id="tg-side-cart-header">
+    <h3>Keranjang Lu</h3>
+    <button id="tg-side-cart-close" onclick="toggleCart()">×</button>
+  </div>
+  <div id="tg-side-cart-body">
+    <div id="tg-side-cart-items"></div>
+  </div>
+  <div id="tg-side-cart-footer">
+    <div style="margin-bottom:12px;font-weight:bold;font-size:16px;">
+      Total: Rp <span id="tg-side-cart-total">0</span>
+    </div>
+    <button id="tg-checkout-btn" onclick="checkoutWA()">Checkout WA</button>
+
+</div>
 <div class="main-content">
 <div class="produk">
 <h2>Jus Alpukat Premium Gold</h2>
