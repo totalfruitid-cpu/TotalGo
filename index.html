@@ -271,7 +271,7 @@ TotalGo © 2026 |
 
   function addToCart(name, price, event) {
     const cartBtn = document.getElementById('tg-cart-btn');
-
+if (navigator.vibrate) navigator.vibrate(50);
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
