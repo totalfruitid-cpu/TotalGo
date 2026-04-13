@@ -109,10 +109,41 @@ totalSpan.textContent=total.toLocaleString('id-ID');
 localStorage.setItem('tg_cart',JSON.stringify(cart));
 }
 function addToCart(name,price){
-const found=cart.find(item=>item.name===name);
-if(found){found.qty++;}else{cart.push({name,price,qty:1});}
-updateCartUI();
-toggleCart();
+  const cartBtn = document.getElementById('tg-cart-btn');
+  
+  // EFEK TERBANG + SAFETY CHECK
+  try {
+    const img = window.event.target.closest('.card')?.querySelector('img');
+    if (img && cartBtn) {
+      const flyImg = img.cloneNode();
+      const imgRect = img.getBoundingClientRect();
+      const cartRect = cartBtn.getBoundingClientRect();
+      
+      flyImg.className = 'fly-img';
+      flyImg.style.top = imgRect.top + 'px';
+      flyImg.style.left = imgRect.left + 'px';
+      document.body.appendChild(flyImg);
+      
+      requestAnimationFrame(() => {
+        flyImg.style.top = cartRect.top + 10 + 'px';
+        flyImg.style.left = cartRect.left + 10 + 'px';
+        flyImg.style.width = '20px';
+        flyImg.style.height = '20px';
+        flyImg.style.opacity = '0.3';
+      });
+      
+      setTimeout(() => flyImg.remove(), 800);
+    }
+  } catch(e) {
+    console.log('Animasi skip:', e);
+  }
+  // EFEK TERBANG END
+
+  // Logika cart lu tetep jalan walau animasi gagal
+  const found=cart.find(item=>item.name===name);
+  if(found){found.qty++;}else{cart.push({name,price,qty:1});}
+  updateCartUI();
+  toggleCart();
 }
 function updateQty(index,change){
 cart[index].qty+=change;
