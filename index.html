@@ -1,162 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TotalGo</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:sans-serif}
-    .header{background:#d4a373;padding:12px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
-    .header h1{font-size:20px;color:white}
-    #tg-cart-btn{position:relative;background:none;border:none;font-size:24px}
-    #tg-cart-badge{position:absolute;top:-5px;right:-8px;background:red;color:white;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;text-align:center}
-    
-    /* SIDE CART CSS */
-    #tg-side-cart{position:fixed;top:0;right:-400px;width:360px;max-width:90vw;height:100vh;background:#fff;box-shadow:-2px 0 10px rgba(0,0,0,.2);z-index:1000;display:flex;flex-direction:column;transition:right .3s ease}
-    #tg-side-cart.open{right:0}
-    #tg-side-cart-header{padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
-    #tg-side-cart-header h3{font-size:18px}
-    #tg-side-cart-close{background:none;border:none;font-size:28px;line-height:1;cursor:pointer}
-    #tg-side-cart-body{flex:1;overflow-y:auto;padding:16px}
-    #tg-side-cart-footer{padding:16px;border-top:1px solid #eee}
-    #tg-checkout-btn{width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px}
-    .tg-cart-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.4);z-index:999;display:none}
-    .tg-cart-overlay.show{display:block}
-    
-    .main-content{padding:16px}
-    .produk{border:1px solid #ddd;padding:12px;margin-bottom:12px;border-radius:8px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TotalGo</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+body{background:#E8F0ED;min-height:100vh;display:flex;flex-direction:column}
+.header{background:#C5D8D1;text-align:center;padding:15px 20px;position:relative;overflow:visible}
+.header h1{font-size:22px;font-weight:600;color:#000}
+#tg-cart-btn{position:absolute;top:12px;right:20px;background:none;border:none;cursor:pointer;z-index:10;color:#000}
+#tg-cart-btn svg{width:28px;height:28px;display:block}
+#tg-cart-badge{position:absolute;top:-5px;right:-8px;background:#FF3B30;color:#fff;font-size:12px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+.main-content{flex:1;padding:20px}
+.produk{background:#fff;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.produk h2{font-size:20px;margin-bottom:8px}
+.produk p{color:#555;margin-bottom:12px}
+.harga{font-size:18px;font-weight:bold;margin-bottom:16px}
+.btn-keranjang{width:100%;background:#C2A878;color:#fff;border:none;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
+.tg-side-cart{position:fixed;top:0;right:-100%;width:85%;max-width:380px;height:100%;background:#fff;box-shadow:-4px 0 15px rgba(0,0,0,0.2);transition:right 0.3s ease;z-index:1001;display:flex;flex-direction:column}
+.tg-side-cart.open{right:0}
+.tg-side-cart-header{padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.tg-side-cart-header h3{font-size:18px}
+.tg-side-cart-close{background:none;border:none;font-size:24px;cursor:pointer}
+.tg-cart-items{flex:1;overflow-y:auto;padding:16px}
+.tg-cart-empty{text-align:center;color:#888;margin-top:40px}
+.tg-side-cart-footer{padding:16px;border-top:1px solid #eee}
+.tg-btn-checkout{width:100%;background:#25D366;color:#fff;border:none;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
+.tg-cart-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;display:none}
+.tg-cart-overlay.open{display:block}
+.tg-cart-item{display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f0f0f0}
+.tg-cart-item-info{flex:1}
+.tg-cart-item-name{font-weight:600;margin-bottom:4px}
+.tg-cart-item-price{color:#555;font-size:14px}
+.tg-cart-item-qty{display:flex;align-items:center;gap:8px}
+.tg-cart-item-qty button{width:24px;height:24px;border:1px solid #ddd;background:#f9f9f9;border-radius:6px;cursor:pointer}
+footer{background:#1A1A1A;color:#fff;text-align:center;padding:20px;font-size:14px;margin-top:auto}
+footer a{color:#fff;text-decoration:none}
+</style>
 </head>
 <body>
-  <div class="header">
-    <h1>TotalGo</h1>
-    <button id="tg-cart-btn" onclick="toggleCart()">
-      🛒
-      <span id="tg-cart-badge">0</span>
-    </button>
-  </div>
-
-  <!-- SIDE CART TOTALGO FINAL V3 -->
-  <div id="tg-side-cart">
-    <div id="tg-side-cart-header">
-      <h3>Keranjang Lu</h3>
-      <button id="tg-side-cart-close" onclick="toggleCart()">×</button>
-    </div>
-    <div id="tg-side-cart-body">
-      <div id="tg-side-cart-items"></div>
-    </div>
-    <div id="tg-side-cart-footer">
-      <div style="margin-bottom:12px;font-weight:bold;font-size:16px;">
-        Total: Rp <span id="tg-side-cart-total">0</span>
-      </div>
-      <button id="tg-checkout-btn" onclick="checkoutWA()">Checkout WA</button>
-    </div>
+<div class="header">
+<h1>TotalGo</h1>
+<button id="tg-cart-btn" onclick="toggleCart()">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0.955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0.75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0.75.75 0 011.5 0z" />
+</svg>
+<span id="tg-cart-badge">0</span>
+</button>
 </div>
-  <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
-
-  <div class="main-content">
-    <div class="produk">
-      <h3>Apel Fuji Test</h3>
-      <p>Rp 25.000</p>
-      <button onclick="addToCart('Apel Fuji Test', 25000)">+ Keranjang</button>
-    </div>
-    <div class="produk">
-      <h3>Jeruk Test</h3>
-      <p>Rp 20.000</p>
-      <button onclick="addToCart('Jeruk Test', 20000)">+ Keranjang</button>
-    </div>
-  </div>
-
-  <footer style="text-align:center;padding:20px;background:#f5f5f5;">
-    TotalGo © 2026
-  </footer>
-
-  <script>
-    let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
-
-    function toggleCart(){
-      document.getElementById('tg-side-cart').classList.toggle('open');
-      document.getElementById('tg-cart-overlay').classList.toggle('show');
-    }
-
-    function updateCartUI(){
-      const badge = document.getElementById('tg-cart-badge');
-      const items = document.getElementById('tg-side-cart-items');
-      const total = document.getElementById('tg-side-cart-total');
-      let totalHarga = 0;
-      let totalItem = 0;
-
-      items.innerHTML = '';
-      cart.forEach((item, i) => {
-        totalHarga += item.price * item.qty;
-        totalItem += item.qty;
-        items.innerHTML += `
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:12px;">
-            <div style="flex:1;">
-              <div style="font-weight:bold;font-size:14px;">${item.name}</div>
-              <div style="color:#666;font-size:13px;">Rp ${(item.price * item.qty).toLocaleString('id-ID')}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <button onclick="kurangItem(${i})" style="width:24px;height:24px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;">-</button>
-              <span style="min-width:20px;text-align:center;">${item.qty}</span>
-              <button onclick="tambahItem(${i})" style="width:24px;height:24px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;">+</button>
-              <button onclick="hapusItem(${i})" style="background:none;border:none;font-size:18px;margin-left:4px;">🗑️</button>
-            </div>
-          </div>`;
-      });
-
-      badge.innerText = totalItem;
-      total.innerText = totalHarga.toLocaleString('id-ID');
-      localStorage.setItem('tg_cart', JSON.stringify(cart));
-    }
-
-    function addToCart(name, price){
-      const exist = cart.find(i => i.name === name);
-      if(exist){
-        exist.qty++;
-      } else {
-        cart.push({name: name, price: price, qty: 1});
-      }
-      updateCartUI();
-      toggleCart();
-    }
-
-    function tambahItem(i){
-      cart[i].qty++;
-      updateCartUI();
-    }
-
-    function kurangItem(i){
-      if(cart[i].qty > 1){
-        cart[i].qty--;
-      } else {
-        cart.splice(i, 1);
-      }
-      updateCartUI();
-    }
-
-    function hapusItem(i){
-      cart.splice(i, 1);
-      updateCartUI();
-    }
-
-    function checkoutWA(){
-      if(cart.length === 0){
-        alert('Keranjang masih kosong bro');
-        return;
-      }
-      let text = 'Halo TotalGo, gua mau order:%0A';
-      cart.forEach(i => {
-        text += `- ${i.name} x${i.qty} = Rp ${(i.price * i.qty).toLocaleString('id-ID')}%0A`;
-      });
-      let totalHarga = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-      text += `%0ATotal: Rp ${totalHarga.toLocaleString('id-ID')}`;
-      window.open(`https://wa.me/6281234567890?text=${text}`, '_blank');
-    }
-
-    updateCartUI();
-    
+<div class="main-content">
+<div class="produk">
+<h2>Jus Alpukat Premium Gold</h2>
+<p>Sehatnya Sultan, Manisnya Pas</p>
+<div class="harga">Rp 28.000</div>
+<button class="btn-keranjang" onclick="addToCart('Jus Alpukat Premium Gold', 28000)">+ Keranjang</button>
+</div>
+</div>
+<div id="tg-side-cart" class="tg-side-cart">
+<div class="tg-side-cart-header">
+<h3>Keranjang Lu</h3>
+<button class="tg-side-cart-close" onclick="toggleCart()">×</button>
+</div>
+<div id="tg-cart-items" class="tg-cart-items"></div>
+<div class="tg-side-cart-footer">
+<div style="margin-bottom:12px;font-weight:600">Total: Rp <span id="tg-cart-total">0</span></div>
+<button class="tg-btn-checkout" onclick="checkoutWA()">Checkout WA</button>
+</div>
+</div>
+<div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
+<footer>
+TotalGo © 2026 |
+<a href="https://instagram.com/totalfruit.id" target="_blank">@totalfruit.id</a>
+</footer>
 <script>
+let cart=JSON.parse(localStorage.getItem('tg_cart'))||[];
+function updateCartUI(){
+const badge=document.getElementById('tg-cart-badge');
+const itemsDiv=document.getElementById('tg-cart-items');
+const totalSpan=document.getElementById('tg-cart-total');
+const totalQty=cart.reduce((sum,item)=>sum+item.qty,0);
+badge.textContent=totalQty;
+badge.style.display=totalQty>0?'flex':'none';
+if(cart.length===0){
+itemsDiv.innerHTML='<div class="tg-cart-empty">Keranjang masih kosong bro</div>';
+}else{
+itemsDiv.innerHTML=cart.map((item,i)=>`
+<div class="tg-cart-item">
+<div class="tg-cart-item-info">
+<div class="tg-cart-item-name">${item.name}</div>
+<div class="tg-cart-item-price">Rp ${item.price.toLocaleString('id-ID')}</div>
+</div>
+<div class="tg-cart-item-qty">
+<button onclick="updateQty(${i},-1)">-</button>
+<span>${item.qty}</span>
+<button onclick="updateQty(${i},1)">+</button>
+</div>
+</div>
+`).join('');
+}
+const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
+totalSpan.textContent=total.toLocaleString('id-ID');
+localStorage.setItem('tg_cart',JSON.stringify(cart));
+}
+function addToCart(name,price){
+const found=cart.find(item=>item.name===name);
+if(found){found.qty++;}else{cart.push({name,price,qty:1});}
+updateCartUI();
+toggleCart();
+}
+function updateQty(index,change){
+cart[index].qty+=change;
+if(cart[index].qty<=0)cart.splice(index,1);
+updateCartUI();
+}
+function toggleCart(){
+document.getElementById('tg-side-cart').classList.toggle('open');
+document.getElementById('tg-cart-overlay').classList.toggle('open');
+}
+function checkoutWA(){
+if(cart.length===0)return alert('Keranjang kosong bro');
+let text=`Halo TotalGo, gw mau pesen:%0A`;
+cart.forEach(item=>{
+text+=`- ${item.name} x${item.qty} = Rp ${(item.price*item.qty).toLocaleString('id-ID')}%0A`;
+});
+const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
+text+=`%0ATotal: Rp ${total.toLocaleString('id-ID')}`;
+window.open(`https://wa.me/6285124441513?text=${text}`,'_blank');
+}
+updateCartUI();
+</script>
 </body>
 </html>
