@@ -143,7 +143,6 @@ function addToCart(name,price){
   const found=cart.find(item=>item.name===name);
   if(found){found.qty++;}else{cart.push({name,price,qty:1});}
   updateCartUI();
-  toggleCart();
 }
 function updateQty(index,change){
 cart[index].qty+=change;
