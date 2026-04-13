@@ -81,19 +81,35 @@
     }
     
     function updateCartUI(){
-      const badge = document.getElementById('tg-cart-badge');
-      const items = document.getElementById('tg-side-cart-items');
-      const total = document.getElementById('tg-side-cart-total');
-      let totalHarga = 0;
-      let totalItem = 0;
-      
-      items.innerHTML = '';
-      cart.forEach((item, i) => {
-        totalHarga += item.price * item.qty;
-        totalItem += item.qty;
-        items.innerHTML += `<div style="margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
-          ${item.name} x${item.qty} - Rp ${item.price * item.qty}
-        </div>`;
+  const badge = document.getElementById('tg-cart-badge');
+  const items = document.getElementById('tg-side-cart-items');
+  const total = document.getElementById('tg-side-cart-total');
+  let totalHarga = 0;
+  let totalItem = 0;
+
+  items.innerHTML = '';
+  cart.forEach((item, i) => {
+    totalHarga += item.price * item.qty;
+    totalItem += item.qty;
+    items.innerHTML += `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:12px;">
+        <div style="flex:1;">
+          <div style="font-weight:bold;font-size:14px;">${item.name}</div>
+          <div style="color:#666;font-size:13px;">Rp ${(item.price * item.qty).toLocaleString('id-ID')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="kurangItem(${i})" style="width:24px;height:24px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;">-</button>
+          <span style="min-width:20px;text-align:center;">${item.qty}</span>
+          <button onclick="tambahItem(${i})" style="width:24px;height:24px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;">+</button>
+          <button onclick="hapusItem(${i})" style="background:none;border:none;font-size:18px;margin-left:4px;">🗑️</button>
+        </div>
+      </div>`;
+  });
+
+  badge.innerText = totalItem;
+  total.innerText = totalHarga.toLocaleString('id-ID');
+  localStorage.setItem('tg_cart', JSON.stringify(cart));
+}
       });
       
       badge.innerText = totalItem;
