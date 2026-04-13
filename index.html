@@ -7,41 +7,34 @@
   <style>
     * {margin:0; padding:0; box-sizing:border-box; font-family:sans-serif;}
     body {background:#E8F0ED; min-height:100vh; display:flex; flex-direction:column;}
-
-  .header {background:#C5D8D1; text-align:center; padding:15px 20px; position:relative; overflow:visible;}
-  .header h1 {font-size:22px; font-weight:600;}
-
-    #tg-cart-btn {position:absolute; top:12px; right:20px; background:none; border:none; cursor:pointer;}
+   .header {background:#C5D8D1; text-align:center; padding:15px 20px; position:relative; overflow:visible;}
+   .header h1 {font-size:22px; font-weight:600;}
+    #tg-cart-btn {position:absolute; top:12px; right:20px; background:none; border:none; cursor:pointer; z-index:10;}
     #tg-cart-btn svg {width:28px; height:28px;}
     #tg-cart-badge {position:absolute; top:-5px; right:-8px; background:#FF3B30; color:#fff; font-size:12px; font-weight:bold; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center;}
-
-  .main-content {flex:1; padding:20px;}
-
-  .produk {background:#fff; border-radius:16px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);}
-  .produk h2 {font-size:20px; margin-bottom:8px;}
-  .produk p {color:#555; margin-bottom:12px;}
-  .harga {font-size:18px; font-weight:bold; margin-bottom:16px;}
-  .btn-keranjang {width:100%; background:#C2A878; color:#fff; border:none; padding:14px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;}
-
-  .tg-side-cart {position:fixed; top:0; right:-100%; width:85%; max-width:380px; height:100%; background:#fff; box-shadow:-4px 0 15px rgba(0,0,0,0.2); transition:right 0.3s ease; z-index:1001; display:flex; flex-direction:column;}
-  .tg-side-cart.open {right:0;}
-  .tg-side-cart-header {padding:16px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
-  .tg-side-cart-header h3 {font-size:18px;}
-  .tg-side-cart-close {background:none; border:none; font-size:24px; cursor:pointer;}
-  .tg-cart-items {flex:1; overflow-y:auto; padding:16px;}
-  .tg-cart-empty {text-align:center; color:#888; margin-top:40px;}
-  .tg-side-cart-footer {padding:16px; border-top:1px solid #eee;}
-  .tg-btn-checkout {width:100%; background:#25D366; color:#fff; border:none; padding:14px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;}
-  .tg-cart-overlay {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:none;}
-  .tg-cart-overlay.open {display:block;}
-
-  .tg-cart-item {display:flex; justify-content:space-between; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #f0f0f0;}
-  .tg-cart-item-info {flex:1;}
-  .tg-cart-item-name {font-weight:600; margin-bottom:4px;}
-  .tg-cart-item-price {color:#555; font-size:14px;}
-  .tg-cart-item-qty {display:flex; align-items:center; gap:8px;}
-  .tg-cart-item-qty button {width:24px; height:24px; border:1px solid #ddd; background:#f9f9f9; border-radius:6px; cursor:pointer;}
-
+   .main-content {flex:1; padding:20px;}
+   .produk {background:#fff; border-radius:16px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+   .produk h2 {font-size:20px; margin-bottom:8px;}
+   .produk p {color:#555; margin-bottom:12px;}
+   .harga {font-size:18px; font-weight:bold; margin-bottom:16px;}
+   .btn-keranjang {width:100%; background:#C2A878; color:#fff; border:none; padding:14px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;}
+   .tg-side-cart {position:fixed; top:0; right:-100%; width:85%; max-width:380px; height:100%; background:#fff; box-shadow:-4px 0 15px rgba(0,0,0,0.2); transition:right 0.3s ease; z-index:1001; display:flex; flex-direction:column;}
+   .tg-side-cart.open {right:0;}
+   .tg-side-cart-header {padding:16px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;}
+   .tg-side-cart-header h3 {font-size:18px;}
+   .tg-side-cart-close {background:none; border:none; font-size:24px; cursor:pointer;}
+   .tg-cart-items {flex:1; overflow-y:auto; padding:16px;}
+   .tg-cart-empty {text-align:center; color:#888; margin-top:40px;}
+   .tg-side-cart-footer {padding:16px; border-top:1px solid #eee;}
+   .tg-btn-checkout {width:100%; background:#25D366; color:#fff; border:none; padding:14px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer;}
+   .tg-cart-overlay {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:none;}
+   .tg-cart-overlay.open {display:block;}
+   .tg-cart-item {display:flex; justify-content:space-between; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid #f0f0f0;}
+   .tg-cart-item-info {flex:1;}
+   .tg-cart-item-name {font-weight:600; margin-bottom:4px;}
+   .tg-cart-item-price {color:#555; font-size:14px;}
+   .tg-cart-item-qty {display:flex; align-items:center; gap:8px;}
+   .tg-cart-item-qty button {width:24px; height:24px; border:1px solid #ddd; background:#f9f9f9; border-radius:6px; cursor:pointer;}
     footer {background:#1A1A1A; color:#fff; text-align:center; padding:20px; font-size:14px; margin-top:auto;}
     footer a {color:#fff; text-decoration:none;}
   </style>
@@ -116,6 +109,7 @@
       const found = cart.find(item => item.name === name);
       if (found) { found.qty++; } else { cart.push({name, price, qty: 1}); }
       updateCartUI();
+      toggleCart();
     }
     function updateQty(index, change) {
       cart[index].qty += change;
