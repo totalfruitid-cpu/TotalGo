@@ -54,12 +54,11 @@ footer a{color:#fff;text-decoration:none}
 <h1>TotalGo</h1>
 <button id="tg-cart-btn" onclick="toggleCart()">🛒<span id="tg-cart-badge">0</span></button>
 </div>
-<div class="main-content">
 <div class="produk">
-<h2>Jus Alpukat Premium Gold</h2>
-<p>Sehatnya Sultan, Manisnya Pas</p>
-<div class="harga">Rp 28.000</div>
-<button class="btn-keranjang" onclick="addToCart('Jus Alpukat Premium Gold', 28000)">+ Keranjang</button>
+  <img src="img/jus-alpukat.jpg" alt="Jus Alpukat Premium Gold">
+  <h3>Jus Alpukat Premium Gold</h3>
+  <p>Rp 25.000</p>
+  <button onclick="addToCart('Jus Alpukat Premium Gold', 25000, event)">+ Keranjang</button>
 </div>
 </div>
 <div id="tg-side-cart" class="tg-side-cart">
@@ -108,12 +107,12 @@ const total=cart.reduce((sum,item)=>sum+(item.price*item.qty),0);
 totalSpan.textContent=total.toLocaleString('id-ID');
 localStorage.setItem('tg_cart',JSON.stringify(cart));
 }
-function addToCart(name,price){
+function addToCart(name,price,event){
   const cartBtn = document.getElementById('tg-cart-btn');
   
-  // EFEK TERBANG + SAFETY CHECK
+  // EFEK TERBANG
   try {
-    const img = window.event.target.closest('.produk')?.querySelector('img');
+    const img = event.target.closest('.produk')?.querySelector('img');
     if (img && cartBtn) {
       const flyImg = img.cloneNode();
       const imgRect = img.getBoundingClientRect();
@@ -122,6 +121,8 @@ function addToCart(name,price){
       flyImg.className = 'fly-img';
       flyImg.style.top = imgRect.top + 'px';
       flyImg.style.left = imgRect.left + 'px';
+      flyImg.style.width = imgRect.width + 'px';
+      flyImg.style.height = imgRect.height + 'px';
       document.body.appendChild(flyImg);
       
       requestAnimationFrame(() => {
@@ -129,7 +130,7 @@ function addToCart(name,price){
         flyImg.style.left = cartRect.left + 10 + 'px';
         flyImg.style.width = '20px';
         flyImg.style.height = '20px';
-        flyImg.style.opacity = '0.3';
+        flyImg.style.opacity = '0';
       });
       
       setTimeout(() => flyImg.remove(), 800);
@@ -137,11 +138,11 @@ function addToCart(name,price){
   } catch(e) {
     console.log('Animasi skip:', e);
   }
-  // EFEK TERBANG END
-
-  // Logika cart lu tetep jalan walau animasi gagal
-  const found=cart.find(item=>item.name===name);
-  if(found){found.qty++;}else{cart.push({name,price,qty:1});}
+  
+  // LOGIKA CART
+  const found = cart.find(item => item.name === name);
+  if(found){found.qty++;}
+  else{cart.push({name,price,qty:1});}
   updateCartUI();
 }
 function updateQty(index,change){
