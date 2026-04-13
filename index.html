@@ -360,8 +360,18 @@ if (navigator.vibrate) navigator.vibrate(50);
   document.getElementById('tg-checkout-modal').style.display = 'flex';
 }
 
+function openCheckoutModal() {
+  if (cart.length === 0) return alert('Keranjang kosong bro!');
+  document.getElementById('checkoutModal').classList.remove('hidden');
+}
+
 function closeCheckoutModal() {
-  document.getElementById('tg-checkout-modal').style.display = 'none';
+  document.getElementById('checkoutModal').classList.add('hidden');
+  document.getElementById('namaInput').value = '';
+  document.getElementById('isCOD').checked = false;
+  document.getElementById('hpInput').value = '';
+  document.getElementById('alamatInput').value = '';
+  toggleCOD();
 }
 
 function submitCheckout() {
@@ -427,18 +437,41 @@ function submitCheckout() {
     );
     renderProduk(hasilFilter);
   }
-function printStruk() {
-  const nama = document.getElementById('tg-nama').value.trim();
-  const alamat = document.getElementById('tg-alamat').value.trim();
-  const hp = document.getElementById('tg-hp').value.trim();
+// 1. Fungsi buat nomer antrian TG001
+function getNomorAntrian() {
+  const today = new Date().toLocaleDateString('id-ID');
+  let data = JSON.parse(localStorage.getItem('tg_antrian') || '{}');
   
-  if(!nama || !alamat || !hp) return alert('Lengkapin dulu bro datanya');
+  if (data.tanggal !== today) {
+    data = { tanggal: today, nomor: 0 };
+  }
+  
+  data.nomor += 1;
+  localStorage.setItem('tg_antrian', JSON.stringify(data));
+  return `TG${String(data.nomor).padStart(3, '0')}`;
+}
+
+// 2. Fungsi toggle COD
+function toggleCOD() {
+  const cod = document.getElementById('isCOD').checked;
+  document.getElementById('codFields').classList.toggle('hidden', !cod);
+}
+
+// 3. Ganti printStruk() lama jadi ini
+function prosesPrint() {
+  const nama = document.getElementById('namaInput').value.trim();
+  const isCOD = document.getElementById('isCOD').checked;
+  const hp = document.getElementById('hpInput').value.trim();
+  const alamat = document.getElementById('alamatInput').value.trim();
+  
+  if (!nama) return alert('Nama wajib diisi bro!');
+  if (isCOD && (!hp || !alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
   
   localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
   
   const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'long', timeStyle:'short'});
-  const noNota = 'TG' + Date.now().toString().slice(-6);
+  const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'});
+  const noNota = getNomorAntrian(); // TG001, bukan Date.now() lagi
   
   let strukHTML = `
     <html>
@@ -459,10 +492,11 @@ function printStruk() {
       <div class="line"></div>
       <div>No: ${noNota}</div>
       <div>${tanggal}</div>
+      ${isCOD ? '<div class="center bold">*** ANTAR / COD ***</div>' : '<div class="center bold">*** AMBIL DI TEMPAT ***</div>'}
       <div class="line"></div>
       <div class="bold">${nama}</div>
-      <div>${hp}</div>
-      <div>${alamat}</div>
+      ${hp ? `<div>${hp}</div>` : ''}
+      ${isCOD && alamat ? `<div>${alamat}</div>` : ''}
       <div class="line"></div>
   `;
   
@@ -483,7 +517,7 @@ function printStruk() {
         <span>Rp ${total.toLocaleString('id-ID')}</span>
       </div>
       <div class="line"></div>
-      <div class="center">Terima kasih!</div>
+      <div class="center">${isCOD ? 'Siap diantar ya!' : 'Tunggu dipanggil ya!'}</div>
       <script>
         window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }
       <\/script>
@@ -495,6 +529,9 @@ function printStruk() {
   const printWindow = window.open('', '_blank');
   printWindow.document.write(strukHTML);
   printWindow.document.close();
+  
+  cart = [];
+  updateCartUI();
 }
   renderProduk();
   updateCartUI();
