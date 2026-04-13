@@ -268,7 +268,7 @@ TotalGo © 2026 |
 
   let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
 
-  function updateCartUI() {
+  fulnnction updateCartUI() {
     const badge = document.getElementById('tg-cart-badge');
     const itemsDiv = document.getElementById('tg-cart-items');
     const totalSpan = document.getElementById('tg-cart-total');
@@ -298,17 +298,62 @@ TotalGo © 2026 |
   }
 
   function addToCart(name, price, event) {
-    if (navigator.vibrate) navigator.vibrate(50);
-    const found = cart.find(item => item.name === name);
-    if (found) { found.qty++; }
-    else { cart.push({ name, price, qty: 1 }); }
+  // 1. Getar
+  if (navigator.vibrate) navigator.vibrate(50);
+  
+  // 2. Bunyi "pop" - pake cara yang gak ke-block
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 800;
+    osc.type = 'triangle';
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.1);
+  } catch(e) { console.log('Audio error:', e); }
 
-    const toast = document.getElementById('tg-toast');
-    toast.textContent = `${name} masuk keranjang ✓`;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
-    updateCartUI();
-  }
+  // 3. Animasi terbang
+  try {
+    const img = event?.target?.closest('.produk')?.querySelector('img');
+    const cartBtn = document.getElementById('tg-cart-btn');
+    if (img && cartBtn) {
+      const flyImg = img.cloneNode();
+      const imgRect = img.getBoundingClientRect();
+      const cartRect = cartBtn.getBoundingClientRect();
+      flyImg.className = 'fly-img';
+      flyImg.style.top = imgRect.top + 'px';
+      flyImg.style.left = imgRect.left + 'px';
+      flyImg.style.width = imgRect.width + 'px';
+      flyImg.style.height = imgRect.height + 'px';
+      document.body.appendChild(flyImg);
+      requestAnimationFrame(() => {
+        flyImg.style.top = cartRect.top + 10 + 'px';
+        flyImg.style.left = cartRect.left + 10 + 'px';
+        flyImg.style.width = '20px';
+        flyImg.style.height = '20px';
+        flyImg.style.opacity = '0';
+      });
+      setTimeout(() => flyImg.remove(), 800);
+    }
+  } catch (e) {}
+
+  // 4. Logic cart
+  const found = cart.find(item => item.name === name);
+  if (found) { found.qty++; }
+  else { cart.push({ name, price, qty: 1 }); }
+
+  // 5. Toast
+  const toast = document.getElementById('tg-toast');
+  toast.textContent = `${name} masuk keranjang ✓`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+  updateCartUI();
+}
 
   function updateQty(index, change) {
     cart[index].qty += change;
