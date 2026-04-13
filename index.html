@@ -9,8 +9,17 @@
 body{background:#E8F0ED;min-height:100vh;display:flex;flex-direction:column}
 .header{background:#C5D8D1;text-align:center;padding:15px 20px;position:relative;overflow:visible}
 .header h1{font-size:22px;font-weight:600;color:#000}
-#tg-cart-btn{position:absolute;top:12px;right:20px;background:none;border:none;cursor:pointer;z-index:10;color:#000}
-#tg-cart-btn svg{width:28px;height:28px;display:block}
+#tg-cart-btn{
+  position:absolute;
+  top:12px;
+  right:20px;
+  background:none;
+  border:none;
+  cursor:pointer;
+  z-index:10;
+  font-size:26px;
+  line-height:1;
+}
 #tg-cart-badge{position:absolute;top:-5px;right:-8px;background:#FF3B30;color:#fff;font-size:12px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
 .main-content{flex:1;padding:20px}
 .produk{background:#fff;border-radius:16px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
@@ -43,9 +52,7 @@ footer a{color:#fff;text-decoration:none}
 <div class="header">
 <h1>TotalGo</h1>
 <button id="tg-cart-btn" onclick="toggleCart()">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0.955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0.75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0.75.75 0 011.5 0z" />
-</svg>
+🛒
 <span id="tg-cart-badge">0</span>
 </button>
 </div>
