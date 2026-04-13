@@ -113,7 +113,7 @@ function addToCart(name,price){
   
   // EFEK TERBANG + SAFETY CHECK
   try {
-    const img = window.event.target.closest('.card')?.querySelector('img');
+    const img = window.event.target.closest('.produk')?.querySelector('img');
     if (img && cartBtn) {
       const flyImg = img.cloneNode();
       const imgRect = img.getBoundingClientRect();
