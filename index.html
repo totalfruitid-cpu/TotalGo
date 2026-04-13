@@ -230,8 +230,8 @@ TotalGo © 2026 |
 
 <div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
 <div id="tg-toast" class="tg-toast"></div>
-<audio id="tg-sfx-pop" preload="auto" playsinline src="data:audio/wav;base64,UklGRlZFAAAXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQJEAAAAPwAA/wAAAPwAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/w== "></audio>
 
+<script>
 <script>
   const produkTotalGo = [
     { id: 1, nama: "Jus Alpukat Lite", harga: 18000, gambar: "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400", deskripsi: "Porsi pas, gula dikit, cocok buat diet" },
@@ -240,19 +240,6 @@ TotalGo © 2026 |
   ];
 
   let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
-  let audioUnlocked = false;
-
-  // UNLOCK AUDIO BUAT HP
-  document.body.addEventListener('touchstart', function(){
-    if(!audioUnlocked){
-      const sfx = document.getElementById('tg-sfx-pop');
-      sfx.play().then(() => {
-        sfx.pause();
-        sfx.currentTime = 0;
-        audioUnlocked = true;
-      }).catch(()=>{});
-    }
-  }, {once: true});
 
   function updateCartUI() {
     const badge = document.getElementById('tg-cart-badge');
@@ -286,12 +273,19 @@ TotalGo © 2026 |
   function addToCart(name, price, event) {
     const cartBtn = document.getElementById('tg-cart-btn');
 
-    // BUNYI POP
-    const sfx = document.getElementById('tg-sfx-pop');
-    if(sfx){
-      sfx.currentTime = 0;
-      sfx.play().catch(e => {});
-    }
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 800;
+      osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.08);
+    } catch(e){}
 
     try {
       const img = event?.target?.closest('.produk')?.querySelector('img');
