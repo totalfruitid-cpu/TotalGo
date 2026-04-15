@@ -31,8 +31,7 @@ main{
   background:#000;
   height:90px;
   border-bottom:2px solid #FFD700;
-  text-align:center;
-  padding:15px 20px 13px;
+  padding:10px 20px 8px;
   position:fixed;
   top:0;
   left:0;
@@ -40,7 +39,6 @@ main{
   z-index:999;
   display:flex;
   align-items:center;
-  justify-content:space-between;
 }
 
 .header-inner{
@@ -50,34 +48,39 @@ main{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  position:relative;
 }
 
-.header-logo{height:34px}
-
-.nav-links{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
+.logo-wrap{
   display:flex;
-  gap:20px;
-  font-size:12px;
-  text-transform:uppercase;
-  font-weight:600;
-  align-items:center;
+  flex-direction:column;
+  align-items:flex-start;
 }
-.nav-links a{color:#ccc;text-decoration:none}
+
+.header h1{
+  font-family:'Cinzel',serif;
+  font-size:34px;
+  color:#FFD700;
+  margin:0;
+  font-weight:700;
+  line-height:1;
+}
+.header h1.go{color:#FFD700}
+
+.slogan{
+  font-size:10px;
+  color:#D4AF37;
+  letter-spacing:1px;
+  margin-top:2px;
+  font-weight:600;
+}
 
 #tg-cart-btn{
-  position:absolute;
-  top:50%;
-  right:0;
-  transform:translateY(-50%);
   background:none;
   border:none;
   cursor:pointer;
   color:#FFD700;
   font-size:28px;
+  position:relative;
 }
 #tg-cart-btn svg{width:28px;height:28px;display:block}
 #tg-cart-badge{position:absolute;top:-5px;right:-8px;background:#FF3B30;color:#fff;font-size:12px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
@@ -135,6 +138,7 @@ main{
   margin: 12px 0 4px 0;
   color:#FFD700;
   font-family:'Cinzel',serif;
+  text-transform:uppercase;
 }
 
 .produk p {
@@ -241,12 +245,12 @@ footer a{color:#D4AF37;text-decoration:none}
 <body>
 <div class="header">
   <div class="header-inner">
-    <img src="/icon-192.png" alt="Total Fruit" class="header-logo" />
-    <div class="nav-links">
-      <a href="#home">HOME</a>
-      <a href="#about">ABOUT</a>
-      <a href="#menu">MENU</a>
-    </div>
+    <div class="logo-wrap" style="display:flex;align-items:center;gap:10px;">
+      <img src="/icon-192.png" style="height:36px;width:36px;border-radius:8px;">
+      <div>
+        <h1 style="font-family:'Cinzel',serif;font-size:30px;color:#FFD700;margin:0;line-height:1;">Total<span class="go">Go</span></h1>
+        <p style="font-size:10px;color:#D4AF37;letter-spacing:1px;margin:0;font-weight:600;">FRESH. FAST. GOLD.</p>
+      </div>
     <button id="tg-cart-btn" onclick="toggleCart()">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
         <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
@@ -474,10 +478,10 @@ footer a{color:#D4AF37;text-decoration:none}
       <style>
         @page { size: 58mm auto; margin: 0; }
         body { font-family: monospace; font-size: 12px; width: 58mm; margin: 0; padding: 5mm; }
-   .center { text-align: center; }
-   .line { border-top: 1px dashed #000; margin: 4px 0; }
-   .row { display: flex; justify-content: space-between; }
-   .bold { font-weight: bold; }
+.center { text-align: center; }
+.line { border-top: 1px dashed #000; margin: 4px 0; }
+.row { display: flex; justify-content: space-between; }
+.bold { font-weight: bold; }
       </style></head><body>
         <div class="center bold">TOTALGO</div>
         <div class="center">@totalfruit.id</div>
