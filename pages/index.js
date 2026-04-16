@@ -26,13 +26,13 @@ const playClick = () => {
   } catch(e) {}
 };
 
-// Generate nomor antrian berdasarkan tanggal + urutan
 const generateQueueNumber = () => {
   const today = new Date();
-  const dateStr = `${today.getDate()}${today.getMonth() + 1}`.padStart(4, '0');
-  const lastQueue = localStorage.getItem(`queue_${dateStr}`) || 0;
-  const newQueue = parseInt(lastQueue) + 1;
-  localStorage.setItem(`queue_${dateStr}`, newQueue);
+  const dateStr = `${String(today.getDate()).padStart(2, '0')}${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const key = `queue_${dateStr}`;
+  const lastQueue = parseInt(localStorage.getItem(key) || '0');
+  const newQueue = lastQueue + 1;
+  localStorage.setItem(key, newQueue);
   return `TG${dateStr}-${String(newQueue).padStart(3, '0')}`;
 };
 
@@ -45,9 +45,17 @@ export default function Home() {
   
   const [nama, setNama] = useState('');
   const [alamat, setAlamat] = useState('');
-  const [metode, setMetode] = useState('COD');
-  const [queueNumber, setQueueNumber] = useState('');
+  const [metode, setMetode] = useState('Ambil di Tempat');
   const [orderData, setOrderData] = useState(null);
+
+  // Auto print pas struk muncul
+  useEffect(() => {
+    if (showReceipt && orderData) {
+      setTimeout(() => {
+        window.print();
+      }, 800);
+    }
+  }, [showReceipt, orderData]);
 
   const addToCart = (product, size) => {
     playClick();
@@ -73,7 +81,8 @@ export default function Home() {
   const getTotal = () => cart.reduce((sum, i) => sum + i.harga[i.size.toLowerCase()] * i.qty, 0);
 
   const handleCheckout = () => {
-    if (!nama || !alamat) return alert('Isi nama & alamat dulu bro');
+    if (!nama) return alert('Isi nama dulu bro');
+    if (metode === 'COD' && !alamat) return alert('COD wajib isi alamat bro');
     
     const queue = generateQueueNumber();
     const data = {
@@ -81,32 +90,27 @@ export default function Home() {
       items: [...cart],
       total: getTotal(),
       nama: nama,
-      alamat: alamat,
+      alamat: metode === 'COD' ? alamat : 'Ambil di Tempat',
       metode: metode,
       waktu: new Date().toLocaleString('id-ID')
     };
     
     setOrderData(data);
-    setQueueNumber(queue);
     setShowCheckout(false);
     setShowReceipt(true);
 
-    // Kirim ke WA
     let text = `*PESANAN TOTALGO*%0A`;
     text += `No. Antrian: *${queue}*%0A%0A`;
     data.items.forEach(i => {
       text += `- ${i.nama} ${i.size} x${i.qty} = Rp${(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}%0A`;
     });
     text += `%0ATotal: *Rp${data.total.toLocaleString()}*%0A`;
-    text += `Nama: ${data.nama}%0AAlamat: ${data.alamat}%0APembayaran: ${data.metode}`;
-    window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
+    text += `Nama: ${data.nama}%0A`;
+    text += `Metode: ${data.metode}%0A`;
+    if(metode === 'COD') text += `Alamat: ${data.alamat}%0A`;
     
+    window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
     setCart([]);
-  };
-
-  const handlePrint = () => {
-    playClick();
-    window.print();
   };
 
   const closeReceipt = () => {
@@ -114,6 +118,7 @@ export default function Home() {
     setShowReceipt(false);
     setNama('');
     setAlamat('');
+    setMetode('Ambil di Tempat');
   };
 
   const filteredProducts = PRODUCTS.filter(p => p.nama.toLowerCase().includes(search.toLowerCase()));
@@ -189,14 +194,24 @@ export default function Home() {
         {showCheckout && (
           <div className="modal" onClick={() => setShowCheckout(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h2>Data Pengiriman</h2>
-              <input placeholder="Nama lengkap" value={nama} onChange={e => setNama(e.target.value)} />
-              <textarea placeholder="Alamat lengkap" value={alamat} onChange={e => setAlamat(e.target.value)} />
+              <h2>Data Pesanan</h2>
+              <input placeholder="Nama lengkap *" value={nama} onChange={e => setNama(e.target.value)} />
+              
               <select value={metode} onChange={e => setMetode(e.target.value)}>
-                <option value="COD">COD - Bayar di tempat</option>
+                <option value="Ambil di Tempat">Ambil di Tempat - Bayar di kasir</option>
+                <option value="COD">COD - Antar ke alamat</option>
                 <option value="Transfer">Transfer Bank</option>
                 <option value="QRIS">QRIS</option>
               </select>
+
+              {metode === 'COD' && (
+                <textarea 
+                  placeholder="Alamat lengkap *wajib untuk COD" 
+                  value={alamat} 
+                  onChange={e => setAlamat(e.target.value)}
+                />
+              )}
+
               <button className="checkout" onClick={handleCheckout}>Kirim Pesanan</button>
               <button className="close" onClick={() => {playClick(); setShowCheckout(false)}}>Batal</button>
             </div>
@@ -204,9 +219,10 @@ export default function Home() {
         )}
 
         {showReceipt && orderData && (
-          <div className="modal" onClick={closeReceipt}>
+          <div className="modal receipt-modal">
             <div className="modal-content receipt" onClick={e => e.stopPropagation()}>
               <div className="receipt-content">
+                <img src="/logo.png" alt="TotalGo" className="receipt-logo" />
                 <h2>TOTALGO</h2>
                 <p className="queue">No. Antrian</p>
                 <h1 className="queue-num">{orderData.queue}</h1>
@@ -226,14 +242,13 @@ export default function Home() {
                 </div>
                 <div className="line"></div>
                 <p><b>Nama:</b> {orderData.nama}</p>
-                <p><b>Alamat:</b> {orderData.alamat}</p>
-                <p><b>Bayar:</b> {orderData.metode}</p>
+                <p><b>Metode:</b> {orderData.metode}</p>
+                {orderData.metode === 'COD' && <p><b>Alamat:</b> {orderData.alamat}</p>}
                 <div className="line"></div>
-                <p className="thanks">Terima kasih!</p>
-                <p className="thanks">Screenshot struk ini</p>
+                <p className="thanks">Tunjukkan struk ini ke kasir</p>
+                <p className="thanks">Order sudah dikirim ke WhatsApp</p>
               </div>
-              <button className="checkout no-print" onClick={handlePrint}>Print Struk</button>
-              <button className="close no-print" onClick={closeReceipt}>Tutup</button>
+              <button className="close no-print" onClick={closeReceipt}>Pesanan Baru</button>
             </div>
           </div>
         )}
@@ -243,9 +258,10 @@ export default function Home() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #fefce8; font-family: sans-serif; }
         @media print {
-          .no-print, .header, .grid, .cart-icon { display: none !important; }
-          .modal { position: static; background: white; }
-          .modal-content { box-shadow: none; max-width: 100%; }
+          body { background: white; }
+          .no-print, .header, .grid, .cart-icon, .modal:not(.receipt-modal) { display: none !important; }
+          .receipt-modal { position: static; background: white; padding: 0; }
+          .modal-content { box-shadow: none; max-width: 100%; border-radius: 0; }
         }
       `}</style>
       
@@ -303,6 +319,7 @@ export default function Home() {
 
         .receipt { text-align: center; font-family: 'Courier New', monospace; }
         .receipt-content { font-size: 13px; line-height: 1.6; }
+        .receipt-logo { height: 50px; margin: 0 auto 8px; }
         .queue { margin-top: 8px; color: #6b7280; font-size: 12px; }
         .queue-num { font-size: 36px; color: #ea580c; margin: 4px 0 8px; letter-spacing: 2px; }
         .line { border-top: 1px dashed #9ca3af; margin: 8px 0; }
