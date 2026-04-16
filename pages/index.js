@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js'
+import { db } from "../lib/firebase"
+import { collection, getDocs, orderBy, query } from "firebase/firestore"
 import Head from 'next/head';
-
-const supabase = createClient(
-  'https://ynnnwppyarvxtpuonnha.supabase.co',
-  'sb_publishable_d_kXZ7IGuFdqQQHKv0zUTg_vCp9OnwN'
-)
 
 const WA_NUMBER = '6285124441513';
 
@@ -51,8 +47,14 @@ export default function Home() {
   useEffect(() => { loadProducts(); }, []);
 
   const loadProducts = async () => {
-    const { data } = await supabase.from('produk').select('*').order('created_at', { ascending: false });
-    setProducts(data || []);
+    try {
+      const q = query(collection(db, "produk"), orderBy("created_at", "desc"));
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(data);
+    } catch (error) {
+      console.error("Gagal load produk:", error);
+    }
     setLoading(false);
   };
 
