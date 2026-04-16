@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 import Head from 'next/head';
 
-const WA_NUMBER = '6285124441513';
+const supabase = createClient(
+  'https://ynnnwppyarvxtpuonnha.supabase.co',
+  'sb_publishable_d_kXZ7IGuFdqQQHKv0zUTg_vCp9OnwN'
+)
 
-const PRODUCTS = [
-  { id: 1, nama: "AVOCADO SERIES", gambar: "/Menu-avocado.png", stok: 20, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
-  { id: 2, nama: "MANGO SERIES", gambar: "/Menu-mango.png", stok: 15, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
-  { id: 3, nama: "BANANA SERIES", gambar: "/Menu-banana.png", stok: 25, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
-  { id: 4, nama: "STRAWBERRY SERIES", gambar: "/Menu-strawberry.png", stok: 10, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
-  { id: 5, nama: "DRAGON SERIES", gambar: "/Menu-dragonfruit.png", stok: 12, harga: { lite: 18000, healthy: 25000, sultan: 45000 } }
-];
+const WA_NUMBER = '6285124441513';
 
 const playClick = () => {
   try {
@@ -37,6 +35,8 @@ const generateQueueNumber = () => {
 };
 
 export default function Home() {
+  const [products, setProducts] = useState([]); // Ganti dari PRODUCTS dummy ke data Supabase
+  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -48,6 +48,17 @@ export default function Home() {
   const [metode, setMetode] = useState('Ambil di Tempat');
   const [orderData, setOrderData] = useState(null);
 
+  // Ambil produk dari Supabase pas halaman dibuka
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    const { data } = await supabase.from('produk').select('*').order('created_at', { ascending: false });
+    setProducts(data || []);
+    setLoading(false);
+  };
+
   // Auto print pas struk muncul
   useEffect(() => {
     if (showReceipt && orderData) {
@@ -57,20 +68,22 @@ export default function Home() {
     }
   }, [showReceipt, orderData]);
 
-  const addToCart = (product, size) => {
+  const addToCart = (product) => {
     playClick();
-    const exist = cart.find(i => i.id === product.id && i.size === size);
+    // Karena tabel lu cuma 1 harga, gak ada size Lite/Healthy/Sultan
+    // Jadi kita pake harga langsung dari tabel
+    const exist = cart.find(i => i.id === product.id);
     if (exist) {
-      setCart(cart.map(i => i.id === product.id && i.size === size ? {...i, qty: i.qty + 1} : i));
+      setCart(cart.map(i => i.id === product.id ? {...i, qty: i.qty + 1} : i));
     } else {
-      setCart([...cart, {...product, size: size, qty: 1}]);
+      setCart([...cart, {...product, qty: 1}]);
     }
   };
 
-  const updateQty = (id, size, delta) => {
+  const updateQty = (id, delta) => {
     playClick();
     setCart(cart.map(i => {
-      if (i.id === id && i.size === size) {
+      if (i.id === id) {
         const newQty = i.qty + delta;
         return newQty > 0 ? {...i, qty: newQty} : null;
       }
@@ -78,7 +91,7 @@ export default function Home() {
     }).filter(Boolean));
   };
 
-  const getTotal = () => cart.reduce((sum, i) => sum + i.harga[i.size.toLowerCase()] * i.qty, 0);
+  const getTotal = () => cart.reduce((sum, i) => sum + i.harga * i.qty, 0);
 
   const handleCheckout = () => {
     if (!nama) return alert('Isi nama dulu bro');
@@ -102,7 +115,7 @@ export default function Home() {
     let text = `*PESANAN TOTALGO*%0A`;
     text += `No. Antrian: *${queue}*%0A%0A`;
     data.items.forEach(i => {
-      text += `- ${i.nama} ${i.size} x${i.qty} = Rp${(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}%0A`;
+      text += `- ${i.nama} x${i.qty} = Rp${(i.harga * i.qty).toLocaleString()}%0A`;
     });
     text += `%0ATotal: *Rp${data.total.toLocaleString()}*%0A`;
     text += `Nama: ${data.nama}%0A`;
@@ -121,7 +134,9 @@ export default function Home() {
     setMetode('Ambil di Tempat');
   };
 
-  const filteredProducts = PRODUCTS.filter(p => p.nama.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter(p => p.nama.toLowerCase().includes(search.toLowerCase()));
+
+  if (loading) return <div style={{padding: 32, textAlign: 'center'}}>Loading produk...</div>
 
   return (
     <>
@@ -149,16 +164,15 @@ export default function Home() {
         </div>
 
         <div className="grid">
-          {filteredProducts.map(p => (
+          {filteredProducts.length === 0 ? (
+            <p style={{textAlign: 'center', gridColumn: '1/-1'}}>Belum ada produk. Tambah di /admin dulu bro</p>
+          ) : filteredProducts.map(p => (
             <div key={p.id} className="card">
-              <img src={p.gambar} alt={p.nama} />
+              <img src={p.gambar_url || 'https://via.placeholder.com/300'} alt={p.nama} />
               <h3>{p.nama}</h3>
-              <div className="sizes">
-                <button onClick={() => addToCart(p, 'Lite')}>Lite<br/>Rp{p.harga.lite.toLocaleString()}</button>
-                <button onClick={() => addToCart(p, 'Healthy')}>Healthy<br/>Rp{p.harga.healthy.toLocaleString()}</button>
-                <button onClick={() => addToCart(p, 'Sultan')}>Sultan<br/>Rp{p.harga.sultan.toLocaleString()}</button>
-              </div>
+              <p className="harga">Rp{Number(p.harga).toLocaleString('id-ID')}</p>
               <p className="stok">Stok: {p.stok}</p>
+              <button className="add-btn" onClick={() => addToCart(p)}>+ Keranjang</button>
             </div>
           ))}
         </div>
@@ -170,15 +184,15 @@ export default function Home() {
               {cart.length === 0 ? <p>Kosong bro</p> : (
                 <>
                   {cart.map(i => (
-                    <div key={`${i.id}-${i.size}`} className="cart-item">
+                    <div key={i.id} className="cart-item">
                       <div>
-                        <b>{i.nama} {i.size}</b>
-                        <p>Rp{(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}</p>
+                        <b>{i.nama}</b>
+                        <p>Rp{(i.harga * i.qty).toLocaleString()}</p>
                       </div>
                       <div className="qty">
-                        <button onClick={() => updateQty(i.id, i.size, -1)}>-</button>
+                        <button onClick={() => updateQty(i.id, -1)}>-</button>
                         <span>{i.qty}</span>
-                        <button onClick={() => updateQty(i.id, i.size, 1)}>+</button>
+                        <button onClick={() => updateQty(i.id, 1)}>+</button>
                       </div>
                     </div>
                   ))}
@@ -231,8 +245,8 @@ export default function Home() {
                 <div className="line"></div>
                 {orderData.items.map((i, idx) => (
                   <div key={idx} className="receipt-item">
-                    <span>{i.nama} {i.size} x{i.qty}</span>
-                    <span>Rp{(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}</span>
+                    <span>{i.nama} x{i.qty}</span>
+                    <span>Rp{(i.harga * i.qty).toLocaleString()}</span>
                   </div>
                 ))}
                 <div className="line"></div>
@@ -288,14 +302,13 @@ export default function Home() {
         .card { background: white; border-radius: 16px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .card img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
         .card h3 { text-align: center; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #1f2937; }
-        .sizes { display: flex; gap: 4px; margin-bottom: 6px; }
-        .sizes button { 
-          flex: 1; background: #fef3c7; border: 1px solid #fcd34d; 
-          border-radius: 6px; padding: 6px 2px; font-size: 10px; 
-          line-height: 1.2; cursor: pointer; color: #92400e; font-weight: 600;
+        .harga { text-align: center; color: #16a34a; font-weight: 700; font-size: 16px; margin: 4px 0; }
+        .stok { text-align: center; font-size: 11px; color: #9ca3af; margin-bottom: 8px; }
+        .add-btn { 
+          width: 100%; background: #ea580c; color: white; border: none;
+          border-radius: 8px; padding: 10px; font-weight: 700; cursor: pointer;
         }
-        .sizes button:active { background: #fde68a; }
-        .stok { text-align: center; font-size: 11px; color: #9ca3af; }
+        .add-btn:active { background: #c2410c; }
 
         .modal { 
           position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
