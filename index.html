@@ -1,172 +1,38 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TotalGo | Signature Gold</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
-body{background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column;padding-top:152px;padding-bottom:70px}
-main{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:12px;width:100%;box-sizing:border-box}
-.header{background:#000;height:90px;border-bottom:2px solid #FFD700;padding:10px 20px 8px;position:fixed;top:0;left:0;width:100%;z-index:999;display:flex;align-items:center}
-.header-inner{width:100%;max-width:700px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
-.logo-wrap{display:flex;flex-direction:column;align-items:flex-start}
-.header h1{font-family:'Cinzel',serif;font-size:30px;color:#FFD700;margin:0;font-weight:700;line-height:1}
-.header h1.go{color:#FFD700}
-.slogan{font-size:10px;color:#D4AF37;letter-spacing:1px;margin-top:2px;font-weight:600}
-#tg-cart-btn{background:none;border:none;cursor:pointer;color:#FFD700;font-size:28px;position:relative}
-#tg-cart-btn svg{width:28px;height:28px;display:block}
-#tg-cart-badge{position:absolute;top:-5px;right:-8px;background:#FF3B30;color:#fff;font-size:12px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
-.search-wrap{position:fixed;top:90px;left:0;right:0;background:#000;padding:10px 12px;z-index:998;box-sizing:border-box;border-bottom:1px solid #222}
-#searchInput{width:100%;padding:12px 16px;border:1px solid #D4AF37;border-radius:12px;font-size:16px;outline:none;background:#111;color:#fff}
-#searchInput:focus{border:2px solid #FFD700}
-.produk{background:#111;border:1px solid #D4AF37;border-radius:16px;padding:12px;margin:0;box-shadow:0 2px 8px rgba(212,175,55,0.1)}
-.produk img{width:100%!important;height:160px!important;object-fit:cover!important;border-radius:12px!important;display:block!important;max-width:100%!important}
-.produk h3{font-size:14px;margin:10px 0 4px 0;color:#FFD700;font-family:'Cinzel',serif;text-transform:uppercase;line-height:1.2}
-.produk p{font-size:12px;margin:0 0 10px 0;color:#ccc;line-height:1.3}
-.produk button{width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(90deg,#FFD700,#FFA500);color:#000;font-weight:600;cursor:pointer;font-size:14px}
-.tg-side-cart{position:fixed;top:0;right:-100%;width:85%;max-width:380px;height:100%;background:#111;box-shadow:-4px 0 15px rgba(0,0,0,0.5);transition:right 0.3s ease;z-index:1001;display:flex;flex-direction:column;border-left:1px solid #FFD700}
-.tg-side-cart.open{right:0}
-.tg-side-cart-header{padding:16px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center}
-.tg-side-cart-header h3{font-size:18px;color:#FFD700;font-family:'Cinzel',serif}
-.tg-side-cart-close{background:none;border:none;font-size:24px;cursor:pointer;color:#FFD700}
-.tg-cart-items{flex:1;overflow-y:auto;padding:16px}
-.tg-cart-empty{text-align:center;color:#888;margin-top:40px}
-.tg-side-cart-footer{padding:16px;border-top:1px solid #333}
-.tg-btn-checkout{width:100%;background:linear-gradient(90deg,#FFD700,#FFA500);color:#000;border:none;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
-.tg-cart-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:1000;display:none}
-.tg-cart-overlay.open{display:block}
-.tg-cart-item{display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #222}
-.tg-cart-item-info{flex:1}
-.tg-cart-item-name{font-weight:600;margin-bottom:4px;color:#fff}
-.tg-cart-item-price{color:#ccc;font-size:14px}
-.tg-cart-item-qty{display:flex;align-items:center;gap:8px}
-.tg-cart-item-qty button{width:24px;height:24px;border:1px solid #D4AF37;background:#000;color:#FFD700;border-radius:6px;cursor:pointer}
-footer{background:#050505;color:#fff;text-align:center;padding:20px;font-size:14px;position:fixed;bottom:0;left:0;width:100%;z-index:999;border-top:1px solid #D4AF37}
-footer a{color:#D4AF37;text-decoration:none}
-.fly-img{position:fixed;width:50px;height:50px;border-radius:8px;z-index:9999;pointer-events:none;object-fit:cover;transition:all 0.8s cubic-bezier(0.2, 1, 0.3, 1)}
-.tg-toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(100px);background:#111;color:#FFD700;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:9999;opacity:0;transition:all 0.3s ease;pointer-events:none;border:1px solid #D4AF37}
-.tg-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
-@media (min-width: 768px) {
-  main{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;padding:20px}
-.produk h3{font-size:16px}
-.produk p{font-size:14px}
-.produk img{height:180px!important}
-}
-</style>
-</head>
-<body>
-<div class="header">
-  <div class="header-inner">
-    <div class="logo-wrap">
-      <h1>TOTAL<span class="go">GO</span></h1>
-      <p class="slogan">SIGNATURE GOLD</p>
-    </div>
-    <button id="tg-cart-btn" onclick="toggleCart()">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-      <span id="tg-cart-badge">0</span>
-    </button>
-  </div>
-</div>
-<div class="search-wrap"><input type="text" id="searchInput" onkeyup="cariProduk()" placeholder="Cari menu premium..."></div>
-<main id="listProduk"></main>
-<div id="tg-side-cart" class="tg-side-cart">
-  <div class="tg-side-cart-header"><h3>Keranjang Lu</h3><button class="tg-side-cart-close" onclick="toggleCart()">×</button></div>
-  <div id="tg-cart-items" class="tg-cart-items"></div>
-  <div class="tg-side-cart-footer"><div style="margin-bottom:12px;font-weight:600;color:#fff">Total: Rp <span id="tg-cart-total">0</span></div><button class="tg-btn-checkout" onclick="checkoutWA()">Checkout WA</button></div>
-</div>
-<footer>TotalGo © 2026 | <a href="https://instagram.com/totalfruit.id" target="_blank">@totalfruit.id</a></footer>
-<div id="tg-cart-overlay" class="tg-cart-overlay" onclick="toggleCart()"></div>
-<div id="tg-toast" class="tg-toast"></div>
-<div id="checkoutModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#111;border-radius:16px;padding:24px;width:100%;max-width:400px;border:1px solid #FFD700;">
-    <h3 style="margin-bottom:16px;font-size:18px;font-weight:bold;color:#FFD700;font-family:'Cinzel',serif;">Data Pesanan</h3>
-    <label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;color:#ccc;">Nama *</label>
-    <input id="namaInput" type="text" placeholder="Kak Rina" style="width:100%;padding:12px;border:1px solid #D4AF37;border-radius:8px;margin-bottom:12px;font-size:16px;box-sizing:border-box;background:#000;color:#fff;">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><input id="isCOD" type="checkbox" onchange="toggleCOD()" style="width:18px;height:18px;accent-color:#FFD700;"><label for="isCOD" style="font-size:14px;color:#ccc;">Antar ke alamat / COD</label></div>
-    <div id="codFields" style="display:none;"><label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;color:#ccc;">No HP</label><input id="hpInput" type="tel" placeholder="08123456789" style="width:100%;padding:12px;border:1px solid #D4AF37;border-radius:8px;margin-bottom:12px;font-size:16px;box-sizing:border-box;background:#000;color:#fff;"><label style="font-size:14px;font-weight:500;display:block;margin-bottom:4px;color:#ccc;">Alamat</label><textarea id="alamatInput" placeholder="Jl. Cigeulis No. 1" rows="3" style="width:100%;padding:12px;border:1px solid #D4AF37;border-radius:8px;margin-bottom:16px;font-size:16px;resize:none;box-sizing:border-box;background:#000;color:#fff;"></textarea></div>
-    <div style="display:flex;gap:8px;"><button onclick="closeCheckoutModal()" style="flex:1;padding:12px;border:1px solid #D4AF37;background:#000;color:#FFD700;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">Batal</button><button onclick="prosesPrint()" style="flex:1;padding:12px;border:none;background:linear-gradient(90deg,#FFD700,#FFA500);color:#000;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">Print</button><button onclick="submitCheckout()" style="flex:1;padding:12px;border:none;background:#25D366;color:#fff;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">WA</button></div>
-  </div>
-</div>
-<script>
-  let produkTotalGo = [];
-  let cart = JSON.parse(localStorage.getItem('tg_cart')) || [];
-
-  // AMBIL DATA DARI products.json
-  fetch('products.json')
-   .then(res => res.json())
-   .then(data => {
-      produkTotalGo = data;
-      renderProduk();
-      updateCartUI();
-    })
-   .catch(err => {
-      document.getElementById('listProduk').innerHTML = `<p style="text-align:center;color:#666;grid-column:1/-1;margin-top:40px;">Gagal load produk 😭</p>`;
-      console.error(err);
-    });
-
-  function updateCartUI() {
-    const badge = document.getElementById('tg-cart-badge'); const itemsDiv = document.getElementById('tg-cart-items'); const totalSpan = document.getElementById('tg-cart-total');
-    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0); badge.textContent = totalQty; badge.style.display = totalQty > 0? 'flex' : 'none';
-    if (cart.length === 0) { itemsDiv.innerHTML = '<div class="tg-cart-empty">Keranjang masih kosong bro</div>'; }
-    else { itemsDiv.innerHTML = cart.map((item, i) => `<div class="tg-cart-item"><div class="tg-cart-item-info"><div class="tg-cart-item-name">${item.name}</div><div class="tg-cart-item-price">Rp ${item.price.toLocaleString('id-ID')}</div></div><div class="tg-cart-item-qty"><button onclick="updateQty(${i},-1)">-</button><span style="color:#fff">${item.qty}</span><button onclick="updateQty(${i},1)">+</button></div></div>`).join(''); }
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); totalSpan.textContent = total.toLocaleString('id-ID'); localStorage.setItem('tg_cart', JSON.stringify(cart));
-  }
-
-  function addToCart(name, price, event) {
-    if (navigator.vibrate) navigator.vibrate(50);
-    try { const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.frequency.value = 800; osc.type = 'triangle'; gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.1); } catch(e) {}
-    try { const img = event?.target?.closest('.produk')?.querySelector('img'); const cartBtn = document.getElementById('tg-cart-btn'); if (img && cartBtn) { const flyImg = img.cloneNode(); const imgRect = img.getBoundingClientRect(); const cartRect = cartBtn.getBoundingClientRect(); flyImg.className = 'fly-img'; flyImg.style.top = imgRect.top + 'px'; flyImg.style.left = imgRect.left + 'px'; flyImg.style.width = imgRect.width + 'px'; flyImg.style.height = imgRect.height + 'px'; document.body.appendChild(flyImg); requestAnimationFrame(() => { flyImg.style.top = cartRect.top + 10 + 'px'; flyImg.style.left = cartRect.left + 10 + 'px'; flyImg.style.width = '20px'; flyImg.style.height = '20px'; flyImg.style.opacity = '0'; }); setTimeout(() => flyImg.remove(), 800); } } catch (e) {}
-    const found = cart.find(item => item.name === name); if (found) { found.qty++; } else { cart.push({ name, price, qty: 1 }); }
-    const toast = document.getElementById('tg-toast'); toast.textContent = `${name} masuk keranjang ✓`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); updateCartUI();
-  }
-
-  function updateQty(index, change) { cart[index].qty += change; if (cart[index].qty <= 0) cart.splice(index, 1); updateCartUI(); }
-  function toggleCart() { document.getElementById('tg-side-cart').classList.toggle('open'); document.getElementById('tg-cart-overlay').classList.toggle('open'); }
-  function checkoutWA() {
-    if (cart.length === 0) return alert('Keranjang kosong bro');
-    const userData = JSON.parse(localStorage.getItem('tg_userdata')) || {};
-    document.getElementById('namaInput').value = userData.nama || ''; document.getElementById('hpInput').value = userData.hp || ''; document.getElementById('alamatInput').value = userData.alamat || ''; document.getElementById('isCOD').checked = false; toggleCOD();
-    document.getElementById('checkoutModal').style.display = 'flex';
-  }
-  function closeCheckoutModal() { document.getElementById('checkoutModal').style.display = 'none'; document.getElementById('namaInput').value = ''; document.getElementById('isCOD').checked = false; document.getElementById('hpInput').value = ''; document.getElementById('alamatInput').value = ''; toggleCOD(); }
-  function toggleCOD() { const cod = document.getElementById('isCOD').checked; document.getElementById('codFields').style.display = cod? 'block' : 'none'; }
-  function getNomorAntrian() { const today = new Date().toLocaleDateString('id-ID'); let data = JSON.parse(localStorage.getItem('tg_antrian') || '{}'); if (data.tanggal!== today) data = { tanggal: today, nomor: 0 }; data.nomor += 1; localStorage.setItem('tg_antrian', JSON.stringify(data)); return `TG${String(data.nomor).padStart(3, '0')}`; }
-  function prosesPrint() {
-    const nama = document.getElementById('namaInput').value.trim(); const isCOD = document.getElementById('isCOD').checked; const hp = document.getElementById('hpInput').value.trim(); const alamat = document.getElementById('alamatInput').value.trim();
-    if (!nama) return alert('Nama wajib diisi bro!'); if (isCOD && (!hp ||!alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
-    localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); const tanggal = new Date().toLocaleString('id-ID', {dateStyle:'short', timeStyle:'short'}); const noNota = getNomorAntrian();
-    let strukHTML = `<html><head><title>Struk TotalGo ${noNota}</title><style>@page { size: 58mm auto; margin: 0; } body { font-family: monospace; font-size: 12px; width: 58mm; margin: 0; padding: 5mm; }.center { text-align: center; }.line { border-top: 1px dashed #000; margin: 4px 0; }.row { display: flex; justify-content: space-between; }.bold { font-weight: bold; }</style></head><body><div class="center bold">TOTALGO</div><div class="center">@totalfruit.id</div><div class="line"></div><div>No: ${noNota}</div><div>${tanggal}</div>${isCOD? '<div class="center bold">*** ANTAR / COD ***</div>' : '<div class="center bold">*** AMBIL DI TEMPAT ***</div>'}<div class="line"></div><div class="bold">${nama}</div>${hp? `<div>${hp}</div>` : ''}${isCOD && alamat? `<div>${alamat}</div>` : ''}<div class="line"></div>`;
-    cart.forEach(item => { strukHTML += `<div class="bold">${item.name}</div><div class="row"><span>${item.qty} x ${item.price.toLocaleString('id-ID')}</span><span>${(item.qty * item.price).toLocaleString('id-ID')}</span></div>`; });
-    strukHTML += `<div class="line"></div><div class="row bold"><span>TOTAL</span><span>Rp ${total.toLocaleString('id-ID')}</span></div><div class="line"></div><div class="center">${isCOD? 'Siap diantar ya!' : 'Tunggu dipanggil ya!'}</div><script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); }<\/script></body></html>`;
-    closeCheckoutModal(); const printWindow = window.open('', '_blank'); printWindow.document.write(strukHTML); printWindow.document.close(); cart = []; updateCartUI();
-  }
-  function submitCheckout() {
-    const nama = document.getElementById('namaInput').value.trim(); const isCOD = document.getElementById('isCOD').checked; const hp = document.getElementById('hpInput').value.trim(); const alamat = document.getElementById('alamatInput').value.trim();
-    if(!nama) return alert('Nama wajib diisi bro!'); if (isCOD && (!hp ||!alamat)) return alert('Kalo COD, HP sama alamat wajib diisi!');
-    localStorage.setItem('tg_userdata', JSON.stringify({nama, alamat, hp}));
-    let text = `Halo TotalGo, gw mau pesen:%0A%0A`; text += `*Data Pemesan*%0A`; text += `Nama: ${nama}%0A`; if(hp) text += `No HP: ${hp}%0A`; text += `${isCOD? 'Alamat: ' + alamat : 'Ambil di tempat'}%0A%0A`; text += `*Pesanan*%0A`;
-    cart.forEach(item => { text += `- ${item.name} x${item.qty} = Rp ${(item.price * item.qty).toLocaleString('id-ID')}%0A`; });
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0); text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*%0A%0ATolong diproses ya`;
-    closeCheckoutModal();
-    const nomorWA = '6285124441513';
-    const url = `https://api.whatsapp.com/send?phone=${nomorWA}&text=${text}`;
-    window.open(url, '_blank');
-    cart = []; updateCartUI();
-  }
-  function renderProduk(data = produkTotalGo) {
-    const container = document.getElementById('listProduk'); if (!container) return; container.innerHTML = '';
-    if(data.length === 0){ container.innerHTML = `<p style="text-align:center;color:#666;grid-column:1/-1;margin-top:40px;">Produk gak ketemu bro 😭</p>`; return; }
-    data.forEach(p => { container.innerHTML += `<div class="produk"><img src="${p.gambar}" alt="${p.nama}"><h3>${p.nama}</h3><p style="font-weight:bold;color:#FFD700;margin:8px 0;font-size:16px;">Rp ${p.harga.toLocaleString('id-ID')}</p><button onclick="addToCart('${p.nama}', ${p.harga}, event)">+ Keranjang</button></div>`; });
-  }
-  function cariProduk() {
-    const keyword = document.getElementById('searchInput').value.toLowerCase();
-    if(keyword === ''){ renderProduk(); return; }
-    const hasilFilter = produkTotalGo.filter(p => p.nama.toLowerCase().includes(keyword) || p.deskripsi.toLowerCase().includes(keyword));
-    renderProduk(hasilFilter);
-  }
-</script>
-</body>
-</html>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TotalGo</title>
+  <style>
+    :root {
+      --hijau-seger: #3a8c6c;
+      --kuning-cerah: #f4d35e;
+      --putih-bersih: #ffffff;
+      --abu-gelap: #333333;
+      --abu-terang: #f5f5f5;
+      --merah-pedas: #d13a3a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    body { background-color: var(--abu-terang); color: var(--abu-gelap); }
+    header { background-color: var(--hijau-seger); color: var(--putih-bersih); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .logo { font-size: 22px; font-weight: 700; }
+    .ikon-keranjang { position: relative; cursor: pointer; }
+    .ikon-keranjang svg { width: 28px; height: 28px; fill: var(--putih-bersih); }
+    .jumlah-item-keranjang { position: absolute; top: -8px; right: -8px; background-color: var(--kuning-cerah); color: var(--abu-gelap); border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: 700; }
+    main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .daftar-produk { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+    .kartu-produk { background-color: var(--putih-bersih); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s; }
+    .kartu-produk:hover { transform: translateY(-5px); }
+    .kartu-produk img { width: 100%; height: 120px; object-fit: cover; }
+    .konten-kartu { padding: 12px; }
+    .konten-kartu h3 { font-size: 16px; margin-bottom: 8px; height: 40px; }
+    .pilihan-ukuran { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .opsi-ukuran { display: flex; justify-content: space-between; align-items: center; padding: 8px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .opsi-ukuran:hover { border-color: var(--hijau-seger); }
+    .opsi-ukuran.terpilih { border-color: var(--hijau-seger); background-color: #e6f3ef; }
+    .nama-ukuran { font-size: 14px; font-weight: 500; }
+    .harga-ukuran { font-size: 14px; font-weight: 700; color: var(--hijau-seger); }
+    .tombol-tambah { width: 100%; padding: 10px; background-color: var(--hijau-seger); color: var(--putih-bersih); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+    .tombol-tambah:hover { background-color: #2e7a5d; }
+    .tombol-tambah:disabled { background-color: #ccc; cursor:
