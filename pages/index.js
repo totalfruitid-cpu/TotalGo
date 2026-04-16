@@ -3,7 +3,6 @@ import Head from 'next/head';
 
 const WA_NUMBER = '6285737557859';
 
-// Data hardcode biar ga pusing API dulu. Nanti kalo udah jalan baru sambungin API.
 const PRODUCTS = [
   {
     id: 1,
@@ -204,4 +203,86 @@ export default function Home() {
         .header h1 { color: #ea580c; font-size: 28px; font-weight: 800; letter-spacing: 1px; }
         .header p { color: #6b7280; font-size: 14px; margin-top: 4px; }
         
-        .grid {
+        .grid { 
+          display: grid; 
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
+          gap: 16px; 
+          padding-bottom: 80px;
+        }
+        .card { 
+          background: white; border-radius: 16px; padding: 12px; 
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card img { 
+          width: 100%; height: 140px; object-fit: cover; 
+          border-radius: 8px; margin-bottom: 8px; 
+        }
+        .card h3 { 
+          text-align: center; font-size: 13px; font-weight: 700; 
+          margin-bottom: 8px; color: #1f2937;
+        }
+        .sizes { display: flex; gap: 4px; margin-bottom: 6px; }
+        .sizes button { 
+          flex: 1; background: #fef3c7; border: 1px solid #fcd34d; 
+          border-radius: 6px; padding: 6px 2px; font-size: 10px; 
+          line-height: 1.2; cursor: pointer; color: #92400e; font-weight: 600;
+        }
+        .sizes button:active { background: #fde68a; }
+        .stok { text-align: center; font-size: 11px; color: #9ca3af; }
+
+        .cart-fab {
+          position: fixed; bottom: 20px; right: 20px;
+          width: 56px; height: 56px; border-radius: 50%;
+          background: #ea580c; color: white; font-size: 24px;
+          border: none; box-shadow: 0 4px 12px rgba(234,88,12,0.4);
+          cursor: pointer; z-index: 50;
+        }
+        .cart-fab span {
+          position: absolute; top: -4px; right: -4px;
+          background: #dc2626; color: white; border-radius: 50%;
+          width: 22px; height: 22px; font-size: 12px;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 700;
+        }
+
+        .modal { 
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+          background: rgba(0,0,0,0.5); display: flex; 
+          align-items: center; justify-content: center; z-index: 100;
+          padding: 16px;
+        }
+        .modal-content { 
+          background: white; border-radius: 16px; padding: 20px; 
+          width: 100%; max-width: 400px; max-height: 80vh; overflow-y: auto;
+        }
+        .modal-content h2 { margin-bottom: 16px; color: #1f2937; }
+        .cart-item { 
+          display: flex; justify-content: space-between; align-items: center; 
+          padding: 12px 0; border-bottom: 1px solid #f3f4f6;
+        }
+        .cart-item p { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+        .qty { display: flex; align-items: center; gap: 12px; }
+        .qty button { 
+          width: 28px; height: 28px; border: 1px solid #e5e7eb; 
+          background: white; border-radius: 6px; cursor: pointer; font-weight: 600;
+        }
+        .total { padding: 16px 0; text-align: right; font-size: 18px; }
+        .checkout { 
+          width: 100%; padding: 14px; background: #ea580c; color: white; 
+          border: none; border-radius: 8px; cursor: pointer; font-weight: 700; 
+          font-size: 16px; margin-top: 8px;
+        }
+        .close { 
+          width: 100%; padding: 12px; background: #e5e7eb; color: #374151; 
+          border: none; border-radius: 8px; cursor: pointer; margin-top: 8px;
+          font-weight: 600;
+        }
+        input, textarea, select { 
+          width: 100%; padding: 12px; border: 1px solid #e5e7eb; 
+          border-radius: 8px; margin-bottom: 12px; font-family: sans-serif;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+      `}</style>
+    </>
+  );
+}
