@@ -1,69 +1,53 @@
 import { useState } from 'react';
 import Head from 'next/head';
 
-const WA_NUMBER = '6285737557859';
+const WA_NUMBER = '6285124441513';
 
 const PRODUCTS = [
-  {
-    id: 1,
-    nama: "AVOCADO SERIES",
-    gambar: "/Menu-avocado.png",
-    stok: 20,
-    harga: { lite: 18000, healthy: 25000, sultan: 45000 }
-  },
-  {
-    id: 2,
-    nama: "MANGO SERIES",
-    gambar: "/Menu-mango.png",
-    stok: 15,
-    harga: { lite: 18000, healthy: 25000, sultan: 45000 }
-  },
-  {
-    id: 3,
-    nama: "BANANA SERIES",
-    gambar: "/Menu-banana.png",
-    stok: 25,
-    harga: { lite: 18000, healthy: 25000, sultan: 45000 }
-  },
-  {
-    id: 4,
-    nama: "STRAWBERRY SERIES",
-    gambar: "/Menu-strawberry.png",
-    stok: 10,
-    harga: { lite: 18000, healthy: 25000, sultan: 45000 }
-  },
-  {
-    id: 5,
-    nama: "DRAGON SERIES",
-    gambar: "/Menu-dragonfruit.png",
-    stok: 12,
-    harga: { lite: 18000, healthy: 25000, sultan: 45000 }
-  }
+  { id: 1, nama: "AVOCADO SERIES", gambar: "/Menu-avocado.png", stok: 20, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
+  { id: 2, nama: "MANGO SERIES", gambar: "/Menu-mango.png", stok: 15, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
+  { id: 3, nama: "BANANA SERIES", gambar: "/Menu-banana.png", stok: 25, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
+  { id: 4, nama: "STRAWBERRY SERIES", gambar: "/Menu-strawberry.png", stok: 10, harga: { lite: 18000, healthy: 25000, sultan: 45000 } },
+  { id: 5, nama: "DRAGON SERIES", gambar: "/Menu-dragonfruit.png", stok: 12, harga: { lite: 18000, healthy: 25000, sultan: 45000 } }
 ];
+
+const playClick = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+};
 
 export default function Home() {
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [search, setSearch] = useState('');
   
   const [nama, setNama] = useState('');
   const [alamat, setAlamat] = useState('');
   const [metode, setMetode] = useState('COD');
 
   const addToCart = (product, size) => {
+    playClick();
     const exist = cart.find(i => i.id === product.id && i.size === size);
     if (exist) {
-      setCart(cart.map(i => 
-        i.id === product.id && i.size === size 
-        ? {...i, qty: i.qty + 1} 
-        : i
-      ));
+      setCart(cart.map(i => i.id === product.id && i.size === size ? {...i, qty: i.qty + 1} : i));
     } else {
       setCart([...cart, {...product, size: size, qty: 1}]);
     }
   };
 
   const updateQty = (id, size, delta) => {
+    playClick();
     setCart(cart.map(i => {
       if (i.id === id && i.size === size) {
         const newQty = i.qty + delta;
@@ -73,26 +57,20 @@ export default function Home() {
     }).filter(Boolean));
   };
 
-  const getTotal = () => {
-    return cart.reduce((sum, i) => sum + i.harga[i.size.toLowerCase()] * i.qty, 0);
-  };
+  const getTotal = () => cart.reduce((sum, i) => sum + i.harga[i.size.toLowerCase()] * i.qty, 0);
 
   const handleCheckout = () => {
-    if (!nama || !alamat) {
-      alert('Isi nama & alamat dulu bro');
-      return;
-    }
+    if (!nama || !alamat) return alert('Isi nama & alamat dulu bro');
     let text = `Halo TotalGo! Saya mau pesan:%0A%0A`;
     cart.forEach(i => {
       text += `- ${i.nama} ${i.size} x${i.qty} = Rp${(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}%0A`;
     });
-    text += `%0ATotal: Rp${getTotal().toLocaleString()}%0A`;
-    text += `Nama: ${nama}%0AAlamat: ${alamat}%0APembayaran: ${metode}`;
+    text += `%0ATotal: Rp${getTotal().toLocaleString()}%0ANama: ${nama}%0AAlamat: ${alamat}%0APembayaran: ${metode}`;
     window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
-    setCart([]);
-    setShowCheckout(false);
-    setShowCart(false);
+    setCart([]); setShowCheckout(false); setShowCart(false);
   };
+
+  const filteredProducts = PRODUCTS.filter(p => p.nama.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <>
@@ -103,34 +81,36 @@ export default function Home() {
       
       <div className="wrap">
         <div className="header">
+          <div className="header-top">
+            <img src="/logo.png" alt="TotalGo" className="logo" />
+            <div className="cart-icon" onClick={() => {playClick(); setShowCart(true)}}>
+              🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
+            </div>
+          </div>
           <h1>TOTALGO</h1>
           <p>Jus Buah Segar Siap Antar</p>
+          <input 
+            className="search" 
+            placeholder="Cari jus..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
 
         <div className="grid">
-          {PRODUCTS.map(p => (
+          {filteredProducts.map(p => (
             <div key={p.id} className="card">
               <img src={p.gambar} alt={p.nama} />
               <h3>{p.nama}</h3>
               <div className="sizes">
-                <button onClick={() => addToCart(p, 'Lite')}>
-                  Lite<br/>Rp{p.harga.lite.toLocaleString()}
-                </button>
-                <button onClick={() => addToCart(p, 'Healthy')}>
-                  Healthy<br/>Rp{p.harga.healthy.toLocaleString()}
-                </button>
-                <button onClick={() => addToCart(p, 'Sultan')}>
-                  Sultan<br/>Rp{p.harga.sultan.toLocaleString()}
-                </button>
+                <button onClick={() => addToCart(p, 'Lite')}>Lite<br/>Rp{p.harga.lite.toLocaleString()}</button>
+                <button onClick={() => addToCart(p, 'Healthy')}>Healthy<br/>Rp{p.harga.healthy.toLocaleString()}</button>
+                <button onClick={() => addToCart(p, 'Sultan')}>Sultan<br/>Rp{p.harga.sultan.toLocaleString()}</button>
               </div>
               <p className="stok">Stok: {p.stok}</p>
             </div>
           ))}
         </div>
-
-        <button className="cart-fab" onClick={() => setShowCart(true)}>
-          🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
-        </button>
 
         {showCart && (
           <div className="modal" onClick={() => setShowCart(false)}>
@@ -151,15 +131,11 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
-                  <div className="total">
-                    <b>Total: Rp{getTotal().toLocaleString()}</b>
-                  </div>
-                  <button className="checkout" onClick={() => setShowCheckout(true)}>
-                    Checkout
-                  </button>
+                  <div className="total"><b>Total: Rp{getTotal().toLocaleString()}</b></div>
+                  <button className="checkout" onClick={() => {playClick(); setShowCheckout(true)}}>Checkout</button>
                 </>
               )}
-              <button className="close" onClick={() => setShowCart(false)}>Tutup</button>
+              <button className="close" onClick={() => {playClick(); setShowCart(false)}}>Tutup</button>
             </div>
           </div>
         )}
@@ -168,25 +144,15 @@ export default function Home() {
           <div className="modal" onClick={() => setShowCheckout(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <h2>Data Pengiriman</h2>
-              <input 
-                placeholder="Nama lengkap" 
-                value={nama} 
-                onChange={e => setNama(e.target.value)} 
-              />
-              <textarea 
-                placeholder="Alamat lengkap" 
-                value={alamat} 
-                onChange={e => setAlamat(e.target.value)}
-              />
+              <input placeholder="Nama lengkap" value={nama} onChange={e => setNama(e.target.value)} />
+              <textarea placeholder="Alamat lengkap" value={alamat} onChange={e => setAlamat(e.target.value)} />
               <select value={metode} onChange={e => setMetode(e.target.value)}>
                 <option value="COD">COD - Bayar di tempat</option>
                 <option value="Transfer">Transfer Bank</option>
                 <option value="QRIS">QRIS</option>
               </select>
-              <button className="checkout" onClick={handleCheckout}>
-                Kirim ke WhatsApp
-              </button>
-              <button className="close" onClick={() => setShowCheckout(false)}>Batal</button>
+              <button className="checkout" onClick={handleCheckout}>Kirim ke WhatsApp</button>
+              <button className="close" onClick={() => {playClick(); setShowCheckout(false)}}>Batal</button>
             </div>
           </div>
         )}
@@ -199,28 +165,27 @@ export default function Home() {
       
       <style jsx>{`
         .wrap { max-width: 600px; margin: 0 auto; padding: 16px; }
-        .header { text-align: center; margin-bottom: 24px; padding-top: 16px; }
-        .header h1 { color: #ea580c; font-size: 28px; font-weight: 800; letter-spacing: 1px; }
-        .header p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+        .header { margin-bottom: 20px; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .logo { height: 40px; }
+        .cart-icon { font-size: 28px; cursor: pointer; position: relative; }
+        .cart-icon span { 
+          position: absolute; top: -8px; right: -8px; 
+          background: #dc2626; color: white; border-radius: 50%; 
+          width: 20px; height: 20px; font-size: 12px; 
+          display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
+        .header h1 { text-align: center; color: #ea580c; font-size: 28px; font-weight: 800; letter-spacing: 1px; }
+        .header p { text-align: center; color: #6b7280; font-size: 14px; margin: 4px 0 12px; }
+        .search { 
+          width: 100%; padding: 12px; border: 1px solid #fcd34d; 
+          border-radius: 12px; background: white; font-size: 14px;
+        }
         
-        .grid { 
-          display: grid; 
-          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
-          gap: 16px; 
-          padding-bottom: 80px;
-        }
-        .card { 
-          background: white; border-radius: 16px; padding: 12px; 
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .card img { 
-          width: 100%; height: 140px; object-fit: cover; 
-          border-radius: 8px; margin-bottom: 8px; 
-        }
-        .card h3 { 
-          text-align: center; font-size: 13px; font-weight: 700; 
-          margin-bottom: 8px; color: #1f2937;
-        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+        .card { background: white; border-radius: 16px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .card img { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+        .card h3 { text-align: center; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #1f2937; }
         .sizes { display: flex; gap: 4px; margin-bottom: 6px; }
         .sizes button { 
           flex: 1; background: #fef3c7; border: 1px solid #fcd34d; 
@@ -230,57 +195,24 @@ export default function Home() {
         .sizes button:active { background: #fde68a; }
         .stok { text-align: center; font-size: 11px; color: #9ca3af; }
 
-        .cart-fab {
-          position: fixed; bottom: 20px; right: 20px;
-          width: 56px; height: 56px; border-radius: 50%;
-          background: #ea580c; color: white; font-size: 24px;
-          border: none; box-shadow: 0 4px 12px rgba(234,88,12,0.4);
-          cursor: pointer; z-index: 50;
-        }
-        .cart-fab span {
-          position: absolute; top: -4px; right: -4px;
-          background: #dc2626; color: white; border-radius: 50%;
-          width: 22px; height: 22px; font-size: 12px;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 700;
-        }
-
         .modal { 
           position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
           background: rgba(0,0,0,0.5); display: flex; 
-          align-items: center; justify-content: center; z-index: 100;
-          padding: 16px;
+          align-items: center; justify-content: center; z-index: 100; padding: 16px;
         }
         .modal-content { 
           background: white; border-radius: 16px; padding: 20px; 
           width: 100%; max-width: 400px; max-height: 80vh; overflow-y: auto;
         }
         .modal-content h2 { margin-bottom: 16px; color: #1f2937; }
-        .cart-item { 
-          display: flex; justify-content: space-between; align-items: center; 
-          padding: 12px 0; border-bottom: 1px solid #f3f4f6;
-        }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
         .cart-item p { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
         .qty { display: flex; align-items: center; gap: 12px; }
-        .qty button { 
-          width: 28px; height: 28px; border: 1px solid #e5e7eb; 
-          background: white; border-radius: 6px; cursor: pointer; font-weight: 600;
-        }
+        .qty button { width: 28px; height: 28px; border: 1px solid #e5e7eb; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; }
         .total { padding: 16px 0; text-align: right; font-size: 18px; }
-        .checkout { 
-          width: 100%; padding: 14px; background: #ea580c; color: white; 
-          border: none; border-radius: 8px; cursor: pointer; font-weight: 700; 
-          font-size: 16px; margin-top: 8px;
-        }
-        .close { 
-          width: 100%; padding: 12px; background: #e5e7eb; color: #374151; 
-          border: none; border-radius: 8px; cursor: pointer; margin-top: 8px;
-          font-weight: 600;
-        }
-        input, textarea, select { 
-          width: 100%; padding: 12px; border: 1px solid #e5e7eb; 
-          border-radius: 8px; margin-bottom: 12px; font-family: sans-serif;
-        }
+        .checkout { width: 100%; padding: 14px; background: #ea580c; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 16px; margin-top: 8px; }
+        .close { width: 100%; padding: 12px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: 600; }
+        input, textarea, select { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px; font-family: sans-serif; }
         textarea { min-height: 80px; resize: vertical; }
       `}</style>
     </>
