@@ -12,6 +12,7 @@ export default function Admin() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ id: '', nama: '', harga: '', stok: '', deskripsi: '', file: null })
+
   const [preview, setPreview] = useState('')
   const [login, setLogin] = useState({ email: 'totalfruit.id@gmail.com', password: '' })
   const [error, setError] = useState('')
