@@ -1,199 +1,240 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
+const API_URL = 'https://totalfruit-api-production.up.railway.app/products';
+const WA_NUMBER = '6285737557859';
+
 export default function Home() {
   const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState({});
+  const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  const NO_WA_JURAGAN = '6281234567890'; // GANTI NOMOR LU
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [selectedSize, setSelectedSize] = useState('Lite');
+  const [loading, setLoading] = useState(true);
+  
+  const [nama, setNama] = useState('');
+  const [alamat, setAlamat] = useState('');
+  const [metode, setMetode] = useState('COD');
 
   useEffect(() => {
-    fetch('https://totalfruit-api-production.up.railway.app/api/produk')
-    .then(res => res.json())
-    .then(data => {
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
         setProducts(data);
-        setIsLoading(false);
+        setLoading(false);
       })
-    .catch(() => setIsLoading(false));
+      .catch(() => setLoading(false));
   }, []);
 
-  const addToCart = (id, size, price) => {
-    const key = `${id}-${size}`;
-    setCart(prev => ({
-    ...prev,
-      [key]: {
-        id, size, price,
-        name: products.find(p => p.id === id).name,
-        qty: (prev[key]?.qty || 0) + 1
-      }
-    }));
+  const addToCart = (product) => {
+    const exist = cart.find(i => i.id === product.id && i.size === selectedSize);
+    if (exist) {
+      setCart(cart.map(i => 
+        i.id === product.id && i.size === selectedSize 
+        ? {...i, qty: i.qty + 1} 
+        : i
+      ));
+    } else {
+      setCart([...cart, {...product, size: selectedSize, qty: 1}]);
+    }
   };
 
-  const updateQty = (key, delta) => {
-    setCart(prev => {
-      const newCart = {...prev };
-      if (newCart[key]) {
-        newCart[key].qty += delta;
-        if (newCart[key].qty <= 0) delete newCart[key];
+  const updateQty = (id, size, delta) => {
+    setCart(cart.map(i => {
+      if (i.id === id && i.size === size) {
+        const newQty = i.qty + delta;
+        return newQty > 0 ? {...i, qty: newQty} : null;
       }
-      return newCart;
-    });
+      return i;
+    }).filter(Boolean));
   };
 
-  const totalItems = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
-  const totalPrice = Object.values(cart).reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const getTotal = () => {
+    return cart.reduce((sum, i) => sum + i.harga[selectedSize.toLowerCase()] * i.qty, 0);
+  };
 
-  const checkoutWA = () => {
-    if (!customerName ||!customerAddress) {
-      alert('Isi nama & alamat dulu bro!');
+  const handleCheckout = () => {
+    if (!nama || !alamat) {
+      alert('Isi nama & alamat dulu bro');
       return;
     }
-    if (totalItems === 0) {
-      alert('Keranjang masih kosong!');
-      return;
-    }
-
-    let pesan = `Halo TotalGo! Saya mau pesan:%0A%0A`;
-    pesan += `Nama: ${customerName}%0AAlamat: ${customerAddress}%0A%0A*Pesanan:*%0A`;
-    Object.values(cart).forEach(item => {
-      pesan += `- ${item.name} ${item.size} x${item.qty} = Rp${(item.price * item.qty).toLocaleString('id-ID')}%0A`;
+    let text = `Halo TotalGo! Saya mau pesan:%0A%0A`;
+    cart.forEach(i => {
+      text += `- ${i.nama} ${i.size} x${i.qty} = Rp${(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}%0A`;
     });
-    pesan += `%0A*Total: Rp${totalPrice.toLocaleString('id-ID')}*`;
-
-    window.open(`https://wa.me/${NO_WA_JURAGAN}?text=${pesan}`, '_blank');
+    text += `%0ATotal: Rp${getTotal().toLocaleString()}%0A`;
+    text += `Nama: ${nama}%0AAlamat: ${alamat}%0APembayaran: ${metode}`;
+    window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
+    setCart([]);
+    setShowCheckout(false);
+    setShowCart(false);
   };
 
   return (
     <>
       <Head>
         <title>TotalGo - Jus Buah Segar</title>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-
-      <div className="app">
+      
+      <div className="container">
         <header>
-          <h1>TOTALGO</h1>
-          <p>Jus Buah Segar Siap Antar</p>
+          <h1>TotalGo</h1>
+          <div className="cart-icon" onClick={() => setShowCart(true)}>
+            🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
+          </div>
         </header>
 
-        {isLoading? (
-          <div className="loading">Loading produk...</div>
-        ) : (
+        <div className="sizes">
+          {['Lite', 'Healthy', 'Sultan'].map(s => (
+            <button 
+              key={s} 
+              className={selectedSize === s ? 'active' : ''} 
+              onClick={() => setSelectedSize(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {loading ? <p className="loading">Loading produk...</p> : (
           <div className="grid">
-            {products.map(prod => (
-              <div key={prod.id} className="card">
-                <img src={prod.img} alt={prod.name} />
-                <h3>{prod.title}</h3>
-                <div className="sizes">
-                  <button onClick={() => addToCart(prod.id, 'Lite', prod.harga_lite)}>
-                    Lite<br/>Rp{prod.harga_lite.toLocaleString('id-ID')}
-                  </button>
-                  <button onClick={() => addToCart(prod.id, 'Healthy', prod.harga_healthy)}>
-                    Healthy<br/>Rp{prod.harga_healthy.toLocaleString('id-ID')}
-                  </button>
-                  <button onClick={() => addToCart(prod.id, 'Sultan', prod.harga_sultan)}>
-                    Sultan<br/>Rp{prod.harga_sultan.toLocaleString('id-ID')}
-                  </button>
-                </div>
-                <p className="stok">Stok: {prod.stok}</p>
+            {products.map(p => (
+              <div key={p.id} className="card">
+                <img src={p.gambar} alt={p.nama} />
+                <h3>{p.nama}</h3>
+                <p>Rp{p.harga[selectedSize.toLowerCase()].toLocaleString()}</p>
+                <button onClick={() => addToCart(p)}>+ Keranjang</button>
               </div>
             ))}
           </div>
         )}
 
-        <div className={`cart-btn ${showCart? 'hide' : ''}`} onClick={() => setShowCart(true)}>
-          🛒 {totalItems > 0 && <span className="badge">{totalItems}</span>}
-        </div>
-
-        <div className={`cart-panel ${showCart? 'show' : ''}`}>
-          <div className="cart-header">
-            <h2>Keranjang</h2>
-            <button onClick={() => setShowCart(false)}>✕</button>
-          </div>
-
-          {totalItems === 0? (
-            <p className="empty">Keranjang kosong</p>
-          ) : (
-            <>
-              <div className="cart-items">
-                {Object.entries(cart).map(([key, item]) => (
-                  <div key={key} className="cart-item">
-                    <div>
-                      <b>{item.name} {item.size}</b>
-                      <p>Rp{item.price.toLocaleString('id-ID')}</p>
+        {showCart && (
+          <div className="modal" onClick={() => setShowCart(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <h2>Keranjang</h2>
+              {cart.length === 0 ? <p>Kosong bro</p> : (
+                <>
+                  {cart.map(i => (
+                    <div key={`${i.id}-${i.size}`} className="cart-item">
+                      <div>
+                        <b>{i.nama} {i.size}</b>
+                        <p>Rp{(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}</p>
+                      </div>
+                      <div className="qty">
+                        <button onClick={() => updateQty(i.id, i.size, -1)}>-</button>
+                        <span>{i.qty}</span>
+                        <button onClick={() => updateQty(i.id, i.size, 1)}>+</button>
+                      </div>
                     </div>
-                    <div className="qty-control">
-                      <button onClick={() => updateQty(key, -1)}>-</button>
-                      <span>{item.qty}</span>
-                      <button onClick={() => updateQty(key, 1)}>+</button>
-                    </div>
+                  ))}
+                  <div className="total">
+                    <b>Total: Rp{getTotal().toLocaleString()}</b>
                   </div>
-                ))}
-              </div>
+                  <button className="checkout" onClick={() => setShowCheckout(true)}>
+                    Checkout
+                  </button>
+                </>
+              )}
+              <button className="close" onClick={() => setShowCart(false)}>Tutup</button>
+            </div>
+          </div>
+        )}
 
-              <div className="form">
-                <input
-                  placeholder="Nama kamu"
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                />
-                <textarea
-                  placeholder="Alamat lengkap"
-                  value={customerAddress}
-                  onChange={e => setCustomerAddress(e.target.value)}
-                />
-              </div>
-
-              <div className="total">
-                <b>Total: Rp{totalPrice.toLocaleString('id-ID')}</b>
-                <button className="checkout" onClick={checkoutWA}>Checkout via WA</button>
-              </div>
-            </>
-          )}
-        </div>
+        {showCheckout && (
+          <div className="modal" onClick={() => setShowCheckout(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <h2>Data Pengiriman</h2>
+              <input 
+                placeholder="Nama lengkap" 
+                value={nama} 
+                onChange={e => setNama(e.target.value)} 
+              />
+              <textarea 
+                placeholder="Alamat lengkap" 
+                value={alamat} 
+                onChange={e => setAlamat(e.target.value)}
+              />
+              <select value={metode} onChange={e => setMetode(e.target.value)}>
+                <option value="COD">COD - Bayar di tempat</option>
+                <option value="Transfer">Transfer Bank</option>
+                <option value="QRIS">QRIS</option>
+              </select>
+              <button className="checkout" onClick={handleCheckout}>
+                Kirim ke WhatsApp
+              </button>
+              <button className="close" onClick={() => setShowCheckout(false)}>Batal</button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <style jsx global>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background: #fffbf0; }
-      .app { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; margin-bottom: 30px; }
-        header h1 { font-size: 2.5rem; color: #e85d04; font-weight: 700; }
-        header p { color: #666; }
-      .loading { text-align: center; padding: 50px; font-size: 1.2rem; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-      .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
-      .card img { width: 100%; height: 180px; object-fit: contain; margin-bottom: 12px; }
-      .card h3 { margin-bottom: 15px; color: #333; font-size: 1.1rem; }
-      .sizes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-      .sizes button { background: #fff4e6; border: 2px solid #ffd6a5; border-radius: 8px; padding: 8px 4px; font-size: 0.8rem; cursor: pointer; font-weight: 600; }
-      .sizes button:hover { background: #e85d04; color: white; border-color: #e85d04; }
-      .stok { font-size: 0.85rem; color: #888; }
-      .cart-btn { position: fixed; bottom: 20px; right: 20px; background: #e85d04; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(232,93,4,0.4); z-index: 99; }
-      .cart-btn.hide { display: none; }
-      .badge { position: absolute; top: -5px; right: -5px; background: #d00000; color: white; width: 24px; height: 24px; border-radius: 50%; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-      .cart-panel { position: fixed; top: 0; right: -400px; width: 100%; max-width: 400px; height: 100%; background: white; box-shadow: -4px 0 12px rgba(0,0,0,0.1); transition: 0.3s; z-index: 100; display: flex; flex-direction: column; }
-      .cart-panel.show { right: 0; }
-      .cart-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-      .cart-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-      .empty { text-align: center; padding: 50px 20px; color: #888; }
-      .cart-items { flex: 1; overflow-y: auto; padding: 0 20px; }
-      .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
-      .cart-item p { color: #666; font-size: 0.9rem; }
-      .qty-control { display: flex; align-items: center; gap: 12px; }
-      .qty-control button { width: 28px; height: 28px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 700; }
-      .form { padding: 20px; border-top: 1px solid #eee; }
-      .form input,.form textarea { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
-      .form textarea { resize: none; height: 80px; }
-      .total { padding: 20px; border-top: 1px solid #eee; }
-      .total b { display: block; font-size: 1.2rem; margin-bottom: 12px; }
-      .checkout { width: 100%; background: #25D366; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
-      .checkout:hover { background: #1fa855; }
-        @media (max-width: 768px) {.grid { grid-template-columns: 1fr 1fr; }.card img { height: 140px; } }
+      <style jsx>{`
+        .container { max-width: 500px; margin: 0 auto; padding: 16px; font-family: sans-serif; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { margin: 0; color: #16a34a; }
+        .cart-icon { font-size: 28px; cursor: pointer; position: relative; }
+        .cart-icon span { 
+          position: absolute; top: -8px; right: -8px; 
+          background: #ef4444; color: white; border-radius: 50%; 
+          width: 20px; height: 20px; font-size: 12px; 
+          display: flex; align-items: center; justify-content: center;
+        }
+        .sizes { display: flex; gap: 8px; margin-bottom: 20px; }
+        .sizes button { 
+          flex: 1; padding: 10px; border: 2px solid #e5e7eb; 
+          background: white; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+        .sizes button.active { background: #16a34a; color: white; border-color: #16a34a; }
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card { 
+          border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; 
+          text-align: center; background: white;
+        }
+        .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+        .card h3 { margin: 8px 0 4px; font-size: 16px; }
+        .card p { margin: 4px 0 8px; color: #16a34a; font-weight: 600; }
+        .card button { 
+          width: 100%; padding: 8px; background: #16a34a; color: white; 
+          border: none; border-radius: 6px; cursor: pointer; font-weight: 600;
+        }
+        .modal { 
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+          background: rgba(0,0,0,0.5); display: flex; 
+          align-items: center; justify-content: center; z-index: 100;
+        }
+        .modal-content { 
+          background: white; border-radius: 16px; padding: 20px; 
+          width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .cart-item { 
+          display: flex; justify-content: space-between; align-items: center; 
+          padding: 12px 0; border-bottom: 1px solid #e5e7eb;
+        }
+        .cart-item p { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+        .qty { display: flex; align-items: center; gap: 12px; }
+        .qty button { 
+          width: 28px; height: 28px; border: 1px solid #e5e7eb; 
+          background: white; border-radius: 6px; cursor: pointer;
+        }
+        .total { padding: 16px 0; text-align: right; font-size: 18px; }
+        .checkout { 
+          width: 100%; padding: 14px; background: #16a34a; color: white; 
+          border: none; border-radius: 8px; cursor: pointer; font-weight: 600; 
+          font-size: 16px; margin-top: 8px;
+        }
+        .close { 
+          width: 100%; padding: 12px; background: #e5e7eb; color: #374151; 
+          border: none; border-radius: 8px; cursor: pointer; margin-top: 8px;
+        }
+        input, textarea, select { 
+          width: 100%; padding: 12px; border: 1px solid #e5e7eb; 
+          border-radius: 8px; margin-bottom: 12px; font-family: sans-serif; box-sizing: border-box;
+        }
+        textarea { min-height: 80px; resize: vertical; }
       `}</style>
     </>
   );
