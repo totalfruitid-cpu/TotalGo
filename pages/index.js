@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 const WA_NUMBER = '6285124441513';
@@ -26,15 +26,28 @@ const playClick = () => {
   } catch(e) {}
 };
 
+// Generate nomor antrian berdasarkan tanggal + urutan
+const generateQueueNumber = () => {
+  const today = new Date();
+  const dateStr = `${today.getDate()}${today.getMonth() + 1}`.padStart(4, '0');
+  const lastQueue = localStorage.getItem(`queue_${dateStr}`) || 0;
+  const newQueue = parseInt(lastQueue) + 1;
+  localStorage.setItem(`queue_${dateStr}`, newQueue);
+  return `TG${dateStr}-${String(newQueue).padStart(3, '0')}`;
+};
+
 export default function Home() {
   const [cart, setCart] = useState([]);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
   const [search, setSearch] = useState('');
   
   const [nama, setNama] = useState('');
   const [alamat, setAlamat] = useState('');
   const [metode, setMetode] = useState('COD');
+  const [queueNumber, setQueueNumber] = useState('');
+  const [orderData, setOrderData] = useState(null);
 
   const addToCart = (product, size) => {
     playClick();
@@ -61,13 +74,46 @@ export default function Home() {
 
   const handleCheckout = () => {
     if (!nama || !alamat) return alert('Isi nama & alamat dulu bro');
-    let text = `Halo TotalGo! Saya mau pesan:%0A%0A`;
-    cart.forEach(i => {
+    
+    const queue = generateQueueNumber();
+    const data = {
+      queue: queue,
+      items: [...cart],
+      total: getTotal(),
+      nama: nama,
+      alamat: alamat,
+      metode: metode,
+      waktu: new Date().toLocaleString('id-ID')
+    };
+    
+    setOrderData(data);
+    setQueueNumber(queue);
+    setShowCheckout(false);
+    setShowReceipt(true);
+
+    // Kirim ke WA
+    let text = `*PESANAN TOTALGO*%0A`;
+    text += `No. Antrian: *${queue}*%0A%0A`;
+    data.items.forEach(i => {
       text += `- ${i.nama} ${i.size} x${i.qty} = Rp${(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}%0A`;
     });
-    text += `%0ATotal: Rp${getTotal().toLocaleString()}%0ANama: ${nama}%0AAlamat: ${alamat}%0APembayaran: ${metode}`;
+    text += `%0ATotal: *Rp${data.total.toLocaleString()}*%0A`;
+    text += `Nama: ${data.nama}%0AAlamat: ${data.alamat}%0APembayaran: ${data.metode}`;
     window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
-    setCart([]); setShowCheckout(false); setShowCart(false);
+    
+    setCart([]);
+  };
+
+  const handlePrint = () => {
+    playClick();
+    window.print();
+  };
+
+  const closeReceipt = () => {
+    playClick();
+    setShowReceipt(false);
+    setNama('');
+    setAlamat('');
   };
 
   const filteredProducts = PRODUCTS.filter(p => p.nama.toLowerCase().includes(search.toLowerCase()));
@@ -151,8 +197,43 @@ export default function Home() {
                 <option value="Transfer">Transfer Bank</option>
                 <option value="QRIS">QRIS</option>
               </select>
-              <button className="checkout" onClick={handleCheckout}>Kirim ke WhatsApp</button>
+              <button className="checkout" onClick={handleCheckout}>Kirim Pesanan</button>
               <button className="close" onClick={() => {playClick(); setShowCheckout(false)}}>Batal</button>
+            </div>
+          </div>
+        )}
+
+        {showReceipt && orderData && (
+          <div className="modal" onClick={closeReceipt}>
+            <div className="modal-content receipt" onClick={e => e.stopPropagation()}>
+              <div className="receipt-content">
+                <h2>TOTALGO</h2>
+                <p className="queue">No. Antrian</p>
+                <h1 className="queue-num">{orderData.queue}</h1>
+                <div className="line"></div>
+                <p><b>{orderData.waktu}</b></p>
+                <div className="line"></div>
+                {orderData.items.map((i, idx) => (
+                  <div key={idx} className="receipt-item">
+                    <span>{i.nama} {i.size} x{i.qty}</span>
+                    <span>Rp{(i.harga[i.size.toLowerCase()] * i.qty).toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="line"></div>
+                <div className="receipt-item total-row">
+                  <b>TOTAL</b>
+                  <b>Rp{orderData.total.toLocaleString()}</b>
+                </div>
+                <div className="line"></div>
+                <p><b>Nama:</b> {orderData.nama}</p>
+                <p><b>Alamat:</b> {orderData.alamat}</p>
+                <p><b>Bayar:</b> {orderData.metode}</p>
+                <div className="line"></div>
+                <p className="thanks">Terima kasih!</p>
+                <p className="thanks">Screenshot struk ini</p>
+              </div>
+              <button className="checkout no-print" onClick={handlePrint}>Print Struk</button>
+              <button className="close no-print" onClick={closeReceipt}>Tutup</button>
             </div>
           </div>
         )}
@@ -161,6 +242,11 @@ export default function Home() {
       <style jsx global>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #fefce8; font-family: sans-serif; }
+        @media print {
+          .no-print, .header, .grid, .cart-icon { display: none !important; }
+          .modal { position: static; background: white; }
+          .modal-content { box-shadow: none; max-width: 100%; }
+        }
       `}</style>
       
       <style jsx>{`
@@ -214,6 +300,15 @@ export default function Home() {
         .close { width: 100%; padding: 12px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: 600; }
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px; font-family: sans-serif; }
         textarea { min-height: 80px; resize: vertical; }
+
+        .receipt { text-align: center; font-family: 'Courier New', monospace; }
+        .receipt-content { font-size: 13px; line-height: 1.6; }
+        .queue { margin-top: 8px; color: #6b7280; font-size: 12px; }
+        .queue-num { font-size: 36px; color: #ea580c; margin: 4px 0 8px; letter-spacing: 2px; }
+        .line { border-top: 1px dashed #9ca3af; margin: 8px 0; }
+        .receipt-item { display: flex; justify-content: space-between; margin: 4px 0; text-align: left; }
+        .total-row { font-size: 16px; margin-top: 8px; }
+        .thanks { font-size: 11px; color: #6b7280; margin-top: 4px; }
       `}</style>
     </>
   );
