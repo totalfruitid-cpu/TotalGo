@@ -553,10 +553,16 @@ footer a{color:#D4AF37;text-decoration:none}
     });
 
     const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*`;
+    text += `%0A*Total: Rp ${total.toLocaleString('id-ID')}*%0A%0ATolong diproses ya`;
 
     closeCheckoutModal();
-    window.open(`https://wa.me/6285124441513?text=${text}`, '_blank');
+
+    const nomorWA = '6285124441513'; // GANTI KALO SALAH
+    const url = `https://api.whatsapp.com/send?phone=${nomorWA}&text=${text}`;
+    window.open(url, '_blank');
+
+    cart = [];
+    updateCartUI();
   }
 
   function renderProduk(data = produkTotalGo) {
