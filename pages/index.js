@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { db } from "../lib/firebase"
 import { collection, getDocs, orderBy, query } from "firebase/firestore"
 import Head from 'next/head';
+import { Montserrat, Poppins } from 'next/font/google'
+
+const montserrat = Montserrat({ 
+  subsets: ['latin'],
+  weight: ['800']
+})
+
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  weight: ['500']
+})
 
 const WA_NUMBER = '6285124441513';
 
@@ -137,7 +148,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>TOTALGO - Jus Buah Segar Siap Antar</title>
+        <title>TOTALGO - Fast.Fresh.Prime</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
@@ -149,8 +160,15 @@ export default function Home() {
               🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
             </div>
           </div>
-          <h1>TOTALGO</h1>
-          <p>Jus Buah Segar Siap Antar</p>
+          <div className="flex flex-col items-center justify-center text-center">
+            <h1 className={`${montserrat.className} text-5xl font-extrabold`}>
+              <span className="text-orange-500">Total</span>
+              <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">Go</span>
+            </h1>
+            <p className={`${poppins.className} text-gray-600 font-medium tracking-[0.2em] uppercase mt-2`}>
+              Fast.Fresh.Prime
+            </p>
+          </div>
           <input
             className="search"
             placeholder="Cari jus..."
