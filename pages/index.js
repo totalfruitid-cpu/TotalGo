@@ -148,7 +148,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>TOTALGO - Fast.Fresh.Prime</title>
+        <title>TotalGo - Fast.Fresh.Prime</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
@@ -159,13 +159,12 @@ export default function Home() {
             <div className="cart-icon" onClick={() => {playClick(); setShowCart(true)}}>
               🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
             </div>
-          </div>
           <div className="flex flex-col items-center justify-center text-center">
             <h1 className={`${montserrat.className} text-5xl font-extrabold`}>
               <span className="text-orange-500">Total</span>
-              <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">Go</span>
+              <span className="text-amber-400">Go</span>
             </h1>
-            <p className={`${poppins.className} text-gray-600 font-medium tracking-[0.2em] uppercase mt-2`}>
+            <p className={`${poppins.className} text-gray-600 font-medium tracking-[0.2em] mt-2`}>
               Fast.Fresh.Prime
             </p>
           </div>
