@@ -11,15 +11,7 @@ export default function Admin() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({
-    id: '',
-    nama: '',
-    punya_varian: true,
-    harga_lite: '',
-    harga_healthy: '',
-    harga_sultan: '',
-    stok: '',
-    deskripsi: '',
-    gambar_url: ''
+    id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''
   })
   const [login, setLogin] = useState({ email: 'totalfruit.id@gmail.com', password: '' })
   const [error, setError] = useState('')
@@ -95,23 +87,15 @@ export default function Admin() {
       console.error(err)
       alert('Gagal simpan: ' + err.message)
     }
-    setForm({
-      id: '', nama: '', punya_varian: true, harga_lite: '', 
-      harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''
-    })
+    setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})
     loadProducts()
   }
 
   const editProduct = (p) => {
     setForm({
-      id: p.id,
-      nama: p.nama || '',
-      punya_varian: p.punya_varian !== false,
-      harga_lite: p.harga_lite || '',
-      harga_healthy: p.harga_healthy || '',
-      harga_sultan: p.harga_sultan || '',
-      stok: p.stok || '',
-      deskripsi: p.deskripsi || '',
+      id: p.id, nama: p.nama || '', punya_varian: p.punya_varian !== false,
+      harga_lite: p.harga_lite || '', harga_healthy: p.harga_healthy || '', harga_sultan: p.harga_sultan || '',
+      stok: p.stok || '', deskripsi: p.deskripsi || '',
       gambar_url: p.gambar_url ? p.gambar_url.replace(BASE_URL_GAMBAR, '') : ''
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -127,119 +111,130 @@ export default function Admin() {
     }
   }
 
-  const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-  const labelClass = "block text-sm font-medium text-gray-700 mb-1"
-  const btnPrimary = "px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-  const btnSecondary = "px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>
-
-  if (!session) {
-    return (
-      <>
-        <Head><title>Login Admin</title></Head>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Login Admin TotalGo</h1>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className={labelClass}>Email</label>
-                <input 
-                  type="email" 
-                  value={login.email} 
-                  onChange={e => setLogin({...login, email: e.target.value})}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Password</label>
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={login.password} 
-                  onChange={e => setLogin({...login, password: e.target.value})}
-                  className={inputClass}
-                />
-              </div>
-              <button type="submit" className={`w-full ${btnPrimary}`}>Login</button>
-              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            </form>
-          </div>
-        </div>
-      </>
-    )
-  }
+  if (loading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}>Loading...</div>
 
   return (
     <>
       <Head><title>Admin TotalGo</title></Head>
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">Admin TotalGo</h1>
-            <button onClick={handleLogout} className={btnSecondary}>Logout</button>
+      <style jsx global>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        h1 { font-size: 28px; color: #1a1a1a; }
+        h2 { font-size: 20px; color: #1a1a1a; margin-bottom: 16px; }
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        @media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+        .form-full { grid-column: 1 / -1; }
+        label { display: block; font-size: 14px; font-weight: 500; color: #333; margin-bottom: 6px; }
+        input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        input:focus, textarea:focus { outline: none; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
+        textarea { resize: vertical; min-height: 80px; }
+        .checkbox-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: #16a34a; color: white; }
+        .btn-primary:hover { background: #15803d; }
+        .btn-secondary { background: #e5e7eb; color: #1f2937; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .btn-blue { background: #3b82f6; color: white; }
+        .btn-blue:hover { background: #2563eb; }
+        .btn-red { background: #ef4444; color: white; }
+        .btn-red:hover { background: #dc2626; }
+        .btn-group { display: flex; gap: 12px; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .product-img { width: 100%; height: 180px; object-fit: cover; background: #f3f4f6; }
+        .product-body { padding: 16px; }
+        .product-title { font-weight: 600; font-size: 18px; margin-bottom: 4px; }
+        .product-meta { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
+        .product-price { font-size: 14px; color: #374151; margin-bottom: 12px; }
+        .product-price p { margin: 2px 0; }
+        .login-box { max-width: 400px; margin: 60px auto; }
+        .error { color: #dc2626; font-size: 14px; text-align: center; margin-top: 12px; }
+        small { font-size: 12px; color: #6b7280; }
+      `}</style>
+
+      {!session ? (
+        <div className="container">
+          <div className="card login-box">
+            <h1 style={{textAlign:'center', marginBottom:24}}>Login Admin TotalGo</h1>
+            <form onSubmit={handleLogin}>
+              <div style={{marginBottom:16}}>
+                <label>Email</label>
+                <input type="email" value={login.email} onChange={e => setLogin({...login, email: e.target.value})} />
+              </div>
+              <div style={{marginBottom:16}}>
+                <label>Password</label>
+                <input type="password" placeholder="••••••••" value={login.password} onChange={e => setLogin({...login, password: e.target.value})} />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{width:'100%'}}>Login</button>
+              {error && <p className="error">{error}</p>}
+            </form>
+          </div>
+        </div>
+      ) : (
+        <div className="container">
+          <div className="header">
+            <h1>Admin TotalGo</h1>
+            <button onClick={handleLogout} className="btn btn-secondary">Logout</button>
           </div>
           
-          <div className="bg-white p-6 rounded-xl shadow-md mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">{form.id ? 'Edit Produk' : 'Tambah Produk'}</h2>
-            <form onSubmit={saveProduct} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className={labelClass}>Nama Produk</label>
-                <input value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} className={inputClass}/>
+          <div className="card">
+            <h2>{form.id ? 'Edit Produk' : 'Tambah Produk'}</h2>
+            <form onSubmit={saveProduct} className="form-grid">
+              <div className="form-full">
+                <label>Nama Produk</label>
+                <input value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} />
               </div>
               
-              <div className="md:col-span-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.punya_varian} onChange={e => handleVarianChange(e.target.checked)} className="w-4 h-4 text-green-600 rounded"/>
-                  <span className="text-sm font-medium text-gray-700">Punya Varian Harga</span>
+              <div className="form-full">
+                <label className="checkbox-wrap">
+                  <input type="checkbox" checked={form.punya_varian} onChange={e => handleVarianChange(e.target.checked)} />
+                  <span>Punya Varian Harga</span>
                 </label>
               </div>
 
               <div>
-                <label className={labelClass}>{form.punya_varian ? 'Harga Lite' : 'Harga'}</label>
-                <input type="number" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} className={inputClass}/>
+                <label>{form.punya_varian ? 'Harga Lite' : 'Harga'}</label>
+                <input type="number" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
               </div>
 
               {form.punya_varian && (
                 <>
                   <div>
-                    <label className={labelClass}>Harga Healthy</label>
-                    <input type="number" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} className={inputClass}/>
+                    <label>Harga Healthy</label>
+                    <input type="number" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} />
                   </div>
                   <div>
-                    <label className={labelClass}>Harga Sultan</label>
-                    <input type="number" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} className={inputClass}/>
+                    <label>Harga Sultan</label>
+                    <input type="number" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} />
                   </div>
                 </>
               )}
 
               <div>
-                <label className={labelClass}>Stok</label>
-                <input type="number" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} className={inputClass}/>
+                <label>Stok</label>
+                <input type="number" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
               </div>
               
-              <div className="md:col-span-2">
-                <label className={labelClass}>Deskripsi</label>
-                <textarea value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} className={`${inputClass} h-24`}/>
+              <div className="form-full">
+                <label>Deskripsi</label>
+                <textarea value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
               </div>
 
-              <div className="md:col-span-2">
-                <label className={labelClass}>Nama File Gambar</label>
-                <input 
-                  placeholder="menu-avocado.png" 
-                  value={form.gambar_url} 
-                  onChange={e => setForm({...form, gambar_url: e.target.value})}
-                  className={inputClass}
-                />
-                <p className="text-xs text-gray-500 mt-1">File harus ada di /public/menu/. Contoh: menu-avocado.png</p>
+              <div className="form-full">
+                <label>Nama File Gambar</label>
+                <input placeholder="menu-avocado.png" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+                <small>File harus ada di /public/menu/. Contoh: menu-avocado.png</small>
               </div>
 
-              <div className="md:col-span-2 flex gap-3">
-                <button type="submit" className={btnPrimary}>
+              <div className="form-full btn-group">
+                <button type="submit" className="btn btn-primary">
                   {form.id ? 'Update Produk' : 'Simpan Produk'}
                 </button>
                 {form.id && (
-                  <button type="button" onClick={() => setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})} className={btnSecondary}>
+                  <button type="button" onClick={() => setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})} className="btn btn-secondary">
                     Batal Edit
                   </button>
                 )}
@@ -247,17 +242,19 @@ export default function Admin() {
             </form>
           </div>
 
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">List Produk</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <h2>List Produk</h2>
+          <div className="products-grid">
             {products.map(p => (
-              <div key={p.id} className="bg-white rounded-xl shadow-md overflow-hidden">
-                {p.gambar_url && <img src={p.gambar_url} alt={p.nama} className="w-full h-40 object-cover"/>}
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg text-gray-800">{p.nama}</h3>
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Stok: {p.stok}</span>
-                  </div>
-                  <div className="text-sm text-gray-600 mb-3">
+              <div key={p.id} className="product-card">
+                {p.gambar_url ? (
+                  <img src={p.gambar_url} alt={p.nama} className="product-img" onError={(e) => e.target.style.display='none'}/>
+                ) : (
+                  <div className="product-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#9ca3af'}}>No Image</div>
+                )}
+                <div className="product-body">
+                  <div className="product-title">{p.nama}</div>
+                  <div className="product-meta">Stok: {p.stok}</div>
+                  <div className="product-price">
                     {p.punya_varian ? 
                       <>
                         <p>Lite: Rp {p.harga_lite?.toLocaleString('id-ID')}</p>
@@ -267,16 +264,16 @@ export default function Admin() {
                       <p>Harga: Rp {p.harga_lite?.toLocaleString('id-ID')}</p>
                     }
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => editProduct(p)} className="flex-1 text-sm px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Edit</button>
-                    <button onClick={() => deleteProduct(p.id)} className="flex-1 text-sm px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600">Hapus</button>
+                  <div className="btn-group">
+                    <button onClick={() => editProduct(p)} className="btn btn-blue" style={{flex:1}}>Edit</button>
+                    <button onClick={() => deleteProduct(p.id)} className="btn btn-red" style={{flex:1}}>Hapus</button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
     </>
   )
 }
