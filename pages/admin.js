@@ -134,7 +134,7 @@ export default function Admin() {
         .checkbox-row input { width: 20px; height: 20px; }
         .checkbox-row label { font-size: 15px; color: #333; }
         .harga-row { display: flex; gap: 0; margin-bottom: 12px; }
-        .harga-row input { border-radius: 0; border-right: none; }
+        .harga-row input { flex: 1; min-width: 0; border-radius: 0; border-right: none; }
         .harga-row input:first-child { border-radius: 10px 0 0 10px; }
         .harga-row input:last-child { border-radius: 0 10px 10px 0; border-right: 1px solid #ddd; }
         .btn-row { display: flex; gap: 10px; margin-top: 8px; }
