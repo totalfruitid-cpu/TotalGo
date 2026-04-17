@@ -4,7 +4,7 @@ import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from "firebase/firestore"
 
-const BASE_URL_GAMBAR = "https://totalgo.vercel.app/menu/";
+const BASE_URL_GAMBAR = "https://totalgo.vercel.app/menu/menu-";
 
 export default function Admin() {
   const [session, setSession] = useState(null)
@@ -96,11 +96,12 @@ export default function Admin() {
   }
 
   const editProduct = (p) => {
+    const namaFile = p.gambar_url ? p.gambar_url.replace(BASE_URL_GAMBAR, '') : ''
     setForm({
       id: p.id, nama: p.nama || '', punya_varian: p.punya_varian !== false,
       harga_lite: p.harga_lite || '', harga_healthy: p.harga_healthy || '', harga_sultan: p.harga_sultan || '',
       stok: p.stok || '', deskripsi: p.deskripsi || '',
-      gambar_url: p.gambar_url ? p.gambar_url.replace(BASE_URL_GAMBAR, '') : ''
+      gambar_url: namaFile
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -150,6 +151,7 @@ export default function Admin() {
         .btn-edit { background: #3b82f6; color: white; padding: 6px 14px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
         .btn-hapus { background: #ef4444; color: white; padding: 6px 14px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
         .error { color: #dc2626; text-align: center; margin-top: 12px; font-size: 14px; }
+        .hint { font-size: 12px; color: #666; margin-top: 4px; }
       `}</style>
 
       <div className="wrap">
@@ -207,7 +209,8 @@ export default function Admin() {
                 </div>
 
                 <div className="field">
-                  <input placeholder="Link Gambar dari Imgur/Postimages (boleh kosong)" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+                  <input placeholder="Nama file: contoh banana.png" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+                  <div className="hint">File di Github harus diawali 'menu-'. Contoh: menu-banana.png</div>
                 </div>
 
                 <div className="btn-row">
