@@ -4,7 +4,8 @@ import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from "firebase/firestore"
 
-const BASE_URL_GAMBAR = "https://totalgo.vercel.app/menu/menu-";
+// UDAH GUE BENERIN: pake path relatif, bukan URL lengkap
+const BASE_URL_GAMBAR = "/menu/";
 
 export default function Admin() {
   const [session, setSession] = useState(null)
@@ -67,6 +68,7 @@ export default function Admin() {
     }
     if (!form.punya_varian &&!form.harga_lite) return alert('Harga wajib diisi')
 
+    // INI KUNCINYA: Sekarang hasilnya /menu/menu-strawberry.png
     const linkLengkap = form.gambar_url ? BASE_URL_GAMBAR + form.gambar_url : null;
 
     const payload = {
@@ -209,8 +211,8 @@ export default function Admin() {
                 </div>
 
                 <div className="field">
-                  <input placeholder="Nama file: contoh banana.png" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
-                  <div className="hint">File di Github harus diawali 'menu-'. Contoh: menu-banana.png</div>
+                  <input placeholder="Nama file: menu-banana.png" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+                  <div className="hint">File di Github harus ada di /public/menu/. Contoh: menu-banana.png</div>
                 </div>
 
                 <div className="btn-row">
