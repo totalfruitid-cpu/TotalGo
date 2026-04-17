@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from "../lib/firebase"
-import { collection, getDocs, orderBy, query } from "firebase/firestore"
+import { collection, getDocs, orderBy, query, doc, updateDoc, increment } from "firebase/firestore"
 import Head from 'next/head';
 import { Montserrat, Poppins } from 'next/font/google'
 
@@ -99,11 +99,30 @@ export default function Home() {
 
   const getTotal = () => cart.reduce((sum, i) => sum + i.harga * i.qty, 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!nama) return alert('Isi nama dulu bro');
     if (metode === 'COD' &&!alamat) return alert('COD wajib isi alamat bro');
+    if (cart.length === 0) return alert('Keranjang kosong bro');
 
+    playClick();
     const queue = generateQueueNumber();
+    
+    try {
+      for (const item of cart) {
+        const productRef = doc(db, "products", item.id);
+        if (item.punya_varian) {
+          if (item.size === 'Lite') await updateDoc(productRef, { stok_lite: increment(-item.qty) });
+          if (item.size === 'Healthy') await updateDoc(productRef, { stok_healthy: increment(-item.qty) });
+          if (item.size === 'Sultan') await updateDoc(productRef, { stok_sultan: increment(-item.qty) });
+        } else {
+          await updateDoc(productRef, { stok: increment(-item.qty) });
+        }
+      }
+    } catch (error) {
+      console.error("Gagal update stok:", error);
+      return alert('Gagal update stok, coba lagi bro');
+    }
+
     const data = {
       queue: queue,
       items: [...cart],
@@ -117,6 +136,7 @@ export default function Home() {
     setOrderData(data);
     setShowCheckout(false);
     setShowReceipt(true);
+    loadProducts();
 
     let text = `*PESANAN TOTALGO*%0A`;
     text += `No. Antrian: *${queue}*%0A%0A`;
@@ -159,6 +179,7 @@ export default function Home() {
             <div className="cart-icon" onClick={() => {playClick(); setShowCart(true)}}>
               🛒 {cart.length > 0 && <span>{cart.reduce((a,b) => a + b.qty, 0)}</span>}
             </div>
+          </div>
           <div className="flex flex-col items-center justify-center text-center">
             <h1 className={`${montserrat.className} text-5xl font-extrabold`}>
               <span className="text-orange-500">Total</span>
@@ -197,7 +218,15 @@ export default function Home() {
                 </div>
               )}
 
-              <p className="stok">Stok: {p.stok}</p>
+              {p.punya_varian ? (
+                <div className="stok-varian">
+                  <span>Lite: {p.stok_lite || 0}</span>
+                  <span>Healthy: {p.stok_healthy || 0}</span>
+                  <span>Sultan: {p.stok_sultan || 0}</span>
+                </div>
+              ) : (
+                <p className="stok">Stok: {p.stok}</p>
+              )}
             </div>
           ))}
         </div>
@@ -342,6 +371,13 @@ export default function Home() {
         }
        .add-btn:active { background: #c2410c; }
        .stok { text-align: center; font-size: 11px; color: #9ca3af; }
+       .stok-varian { 
+          display: flex; 
+          justify-content: center; 
+          gap: 8px; 
+          font-size: 11px; 
+          color: #9ca3af; 
+        }
 
        .modal {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
