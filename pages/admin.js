@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { auth, db, storage } from "../lib/firebase"
+import { auth, db } from "../lib/firebase" // storage udah dihapus
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+// import storage udah dihapus
 
 export default function Admin() {
   const [session, setSession] = useState(null)
@@ -18,10 +18,9 @@ export default function Admin() {
     harga_sultan: '',
     stok: '',
     deskripsi: '',
-    file: null,
-    gambar_url: ''
+    gambar_url: '' // file dihapus
   })
-  const [preview, setPreview] = useState('')
+  // preview dihapus
   const [login, setLogin] = useState({ email: 'totalfruit.id@gmail.com', password: '' })
   const [error, setError] = useState('')
 
@@ -56,11 +55,7 @@ export default function Admin() {
     setProducts(data || [])
   }
 
-  const handleFile = (e) => {
-    const file = e.target.files[0]
-    setForm({...form, file })
-    if (file) setPreview(URL.createObjectURL(file))
-  }
+  // handleFile dihapus
 
   const handleVarianChange = (checked) => {
     if (!checked) {
@@ -78,17 +73,7 @@ export default function Admin() {
     }
     if (!form.punya_varian &&!form.harga_lite) return alert('Harga wajib diisi')
 
-    let gambar_url = form.gambar_url || null
-    if (form.file) {
-      const fileName = `products/${Date.now()}_${form.file.name}`
-      const storageRef = ref(storage, fileName)
-      try {
-        const snapshot = await uploadBytes(storageRef, form.file)
-        gambar_url = await getDownloadURL(snapshot.ref)
-      } catch (error) {
-        return alert('Gagal upload: ' + error.message)
-      }
-    }
+    // bagian upload storage dihapus semua
 
     const payload = {
       nama: form.nama,
@@ -98,7 +83,7 @@ export default function Admin() {
       harga_sultan: parseInt(form.punya_varian? form.harga_sultan : form.harga_lite) || 0,
       stok: parseInt(form.stok) || 0,
       deskripsi: form.deskripsi,
-      gambar_url: gambar_url
+      gambar_url: form.gambar_url || null // langsung pake input url
     }
 
     try {
@@ -116,8 +101,8 @@ export default function Admin() {
   }
 
   const resetForm = () => {
-    setForm({ id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', file: null, gambar_url: '' })
-    setPreview('')
+    setForm({ id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: '' })
+    // setPreview dihapus
   }
 
   const editProduct = (p) => {
@@ -126,10 +111,10 @@ export default function Admin() {
       punya_varian: p.punya_varian?? true,
       harga_lite: p.harga_lite?? '',
       harga_healthy: p.harga_healthy?? '',
-      harga_sultan: p.harga_sultan?? '',
-      file: null
+      harga_sultan: p.harga_sultan?? ''
+      // file: null dihapus
     })
-    setPreview(p.gambar_url)
+    // setPreview dihapus
     window.scrollTo(0, 0)
   }
 
@@ -200,8 +185,8 @@ export default function Admin() {
 
           <input type="number" placeholder="Stok" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
           <textarea placeholder="Deskripsi produk: bahan, manfaat, keunikan" value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
-          <input type="file" accept="image/*" onChange={handleFile} />
-          {preview && <img src={preview} className="preview" alt="preview" />}
+          <input type="url" placeholder="Link Gambar dari Imgur/Postimages (boleh kosong)" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+          {form.gambar_url && <img src={form.gambar_url} className="preview" alt="preview" />}
           <div className="btn-group">
             <button type="submit" className="save">Simpan</button>
             <button type="button" onClick={resetForm} className="reset">Reset</button>
