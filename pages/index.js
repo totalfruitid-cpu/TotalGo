@@ -48,7 +48,7 @@ export default function Home() {
 
   const loadProducts = async () => {
     try {
-      const q = query(collection(db, "produk"), orderBy("created_at", "desc"));
+      const q = query(collection(db, "products"), orderBy("created_at", "desc"));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProducts(data);
