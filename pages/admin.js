@@ -55,6 +55,10 @@ export default function Admin() {
     }
   }
 
+  const resetForm = () => {
+    setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})
+  }
+
   const saveProduct = async (e) => {
     e.preventDefault()
     if (!form.nama) return alert('Nama wajib diisi')
@@ -87,7 +91,7 @@ export default function Admin() {
       console.error(err)
       alert('Gagal simpan: ' + err.message)
     }
-    setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})
+    resetForm()
     loadProducts()
   }
 
@@ -111,169 +115,132 @@ export default function Admin() {
     }
   }
 
-  if (loading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}>Loading...</div>
+  if (loading) return <p style={{textAlign:'center', marginTop:50}}>Loading...</p>
 
   return (
     <>
-      <Head><title>Admin TotalGo</title></Head>
-      <style jsx global>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        h1 { font-size: 28px; color: #1a1a1a; }
-        h2 { font-size: 20px; color: #1a1a1a; margin-bottom: 16px; }
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-        @media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; } }
-        .form-full { grid-column: 1 / -1; }
-        label { display: block; font-size: 14px; font-weight: 500; color: #333; margin-bottom: 6px; }
-        input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        input:focus, textarea:focus { outline: none; border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
-        textarea { resize: vertical; min-height: 80px; }
-        .checkbox-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: #16a34a; color: white; }
-        .btn-primary:hover { background: #15803d; }
-        .btn-secondary { background: #e5e7eb; color: #1f2937; }
-        .btn-secondary:hover { background: #d1d5db; }
-        .btn-blue { background: #3b82f6; color: white; }
-        .btn-blue:hover { background: #2563eb; }
-        .btn-red { background: #ef4444; color: white; }
-        .btn-red:hover { background: #dc2626; }
-        .btn-group { display: flex; gap: 12px; }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .product-img { width: 100%; height: 180px; object-fit: cover; background: #f3f4f6; }
-        .product-body { padding: 16px; }
-        .product-title { font-weight: 600; font-size: 18px; margin-bottom: 4px; }
-        .product-meta { font-size: 13px; color: #6b7280; margin-bottom: 12px; }
-        .product-price { font-size: 14px; color: #374151; margin-bottom: 12px; }
-        .product-price p { margin: 2px 0; }
-        .login-box { max-width: 400px; margin: 60px auto; }
-        .error { color: #dc2626; font-size: 14px; text-align: center; margin-top: 12px; }
-        small { font-size: 12px; color: #6b7280; }
+      <Head><title>Dashboard Produk</title></Head>
+      <style jsx>{`
+        .wrap { max-width: 600px; margin: 0 auto; padding: 16px; font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        h1 { font-size: 28px; margin: 0; font-weight: 600; }
+        .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2 { font-size: 18px; margin: 0 0 16px 0; font-weight: 600; }
+        .field { margin-bottom: 12px; }
+        .field input, .field textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; background: #fff; }
+        .field textarea { min-height: 80px; resize: vertical; }
+        .field input::placeholder, .field textarea::placeholder { color: #999; }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+        .checkbox-row input { width: 20px; height: 20px; }
+        .checkbox-row label { font-size: 15px; color: #333; }
+        .harga-row { display: flex; gap: 0; margin-bottom: 12px; }
+        .harga-row input { border-radius: 0; border-right: none; }
+        .harga-row input:first-child { border-radius: 10px 0 0 10px; }
+        .harga-row input:last-child { border-radius: 0 10px 10px 0; border-right: 1px solid #ddd; }
+        .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn-simpan { background: #22c55e; color: white; }
+        .btn-reset { background: #6b7280; color: white; flex: 0.5; }
+        .btn-logout { background: #dc2626; color: white; padding: 8px 16px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; }
+        .product-item { display: flex; gap: 12px; padding: 12px; background: #fff; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); align-items: flex-start; }
+        .product-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #f3f4f6; flex-shrink: 0; }
+        .product-info { flex: 1; }
+        .product-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+        .price-tag { background: #f3f4f6; padding: 4px 10px; border-radius: 6px; font-size: 14px; display: inline-block; }
+        .product-actions { display: flex; flex-direction: column; gap: 6px; }
+        .btn-edit { background: #3b82f6; color: white; padding: 6px 14px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
+        .btn-hapus { background: #ef4444; color: white; padding: 6px 14px; border-radius: 8px; font-size: 14px; border: none; cursor: pointer; font-weight: 500; }
+        .error { color: #dc2626; text-align: center; margin-top: 12px; font-size: 14px; }
       `}</style>
 
-      {!session ? (
-        <div className="container">
-          <div className="card login-box">
-            <h1 style={{textAlign:'center', marginBottom:24}}>Login Admin TotalGo</h1>
+      <div className="wrap">
+        {!session ? (
+          <div className="card">
+            <h2>Login Admin TotalGo</h2>
             <form onSubmit={handleLogin}>
-              <div style={{marginBottom:16}}>
-                <label>Email</label>
-                <input type="email" value={login.email} onChange={e => setLogin({...login, email: e.target.value})} />
+              <div className="field">
+                <input type="email" placeholder="Email" value={login.email} onChange={e => setLogin({...login, email: e.target.value})} />
               </div>
-              <div style={{marginBottom:16}}>
-                <label>Password</label>
-                <input type="password" placeholder="••••••••" value={login.password} onChange={e => setLogin({...login, password: e.target.value})} />
+              <div className="field">
+                <input type="password" placeholder="Password" value={login.password} onChange={e => setLogin({...login, password: e.target.value})} />
               </div>
-              <button type="submit" className="btn btn-primary" style={{width:'100%'}}>Login</button>
+              <button type="submit" className="btn btn-simpan" style={{width:'100%'}}>Login</button>
               {error && <p className="error">{error}</p>}
             </form>
           </div>
-        </div>
-      ) : (
-        <div className="container">
-          <div className="header">
-            <h1>Admin TotalGo</h1>
-            <button onClick={handleLogout} className="btn btn-secondary">Logout</button>
-          </div>
-          
-          <div className="card">
-            <h2>{form.id ? 'Edit Produk' : 'Tambah Produk'}</h2>
-            <form onSubmit={saveProduct} className="form-grid">
-              <div className="form-full">
-                <label>Nama Produk</label>
-                <input value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} />
-              </div>
-              
-              <div className="form-full">
-                <label className="checkbox-wrap">
+        ) : (
+          <>
+            <div className="header">
+              <h1>Dashboard Produk</h1>
+              <button onClick={handleLogout} className="btn-logout">Logout</button>
+            </div>
+            
+            <div className="card">
+              <h2>Tambah / Edit Produk</h2>
+              <form onSubmit={saveProduct}>
+                <div className="field">
+                  <input placeholder="Nama Produk" value={form.nama} onChange={e => setForm({...form, nama: e.target.value})} />
+                </div>
+                
+                <div className="checkbox-row">
                   <input type="checkbox" checked={form.punya_varian} onChange={e => handleVarianChange(e.target.checked)} />
-                  <span>Punya Varian Harga</span>
-                </label>
-              </div>
+                  <label>Produk punya varian Lite/Healthy/Sultan</label>
+                </div>
 
-              <div>
-                <label>{form.punya_varian ? 'Harga Lite' : 'Harga'}</label>
-                <input type="number" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
-              </div>
-
-              {form.punya_varian && (
-                <>
-                  <div>
-                    <label>Harga Healthy</label>
-                    <input type="number" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} />
+                {form.punya_varian ? (
+                  <div className="harga-row">
+                    <input type="number" placeholder="Harga Lite" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
+                    <input type="number" placeholder="Harga Healthy" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} />
+                    <input type="number" placeholder="Harga Sultan" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} />
                   </div>
-                  <div>
-                    <label>Harga Sultan</label>
-                    <input type="number" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label>Stok</label>
-                <input type="number" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
-              </div>
-              
-              <div className="form-full">
-                <label>Deskripsi</label>
-                <textarea value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
-              </div>
-
-              <div className="form-full">
-                <label>Nama File Gambar</label>
-                <input placeholder="menu-avocado.png" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
-                <small>File harus ada di /public/menu/. Contoh: menu-avocado.png</small>
-              </div>
-
-              <div className="form-full btn-group">
-                <button type="submit" className="btn btn-primary">
-                  {form.id ? 'Update Produk' : 'Simpan Produk'}
-                </button>
-                {form.id && (
-                  <button type="button" onClick={() => setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})} className="btn btn-secondary">
-                    Batal Edit
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          <h2>List Produk</h2>
-          <div className="products-grid">
-            {products.map(p => (
-              <div key={p.id} className="product-card">
-                {p.gambar_url ? (
-                  <img src={p.gambar_url} alt={p.nama} className="product-img" onError={(e) => e.target.style.display='none'}/>
                 ) : (
-                  <div className="product-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#9ca3af'}}>No Image</div>
-                )}
-                <div className="product-body">
-                  <div className="product-title">{p.nama}</div>
-                  <div className="product-meta">Stok: {p.stok}</div>
-                  <div className="product-price">
-                    {p.punya_varian ? 
-                      <>
-                        <p>Lite: Rp {p.harga_lite?.toLocaleString('id-ID')}</p>
-                        <p>Healthy: Rp {p.harga_healthy?.toLocaleString('id-ID')}</p>
-                        <p>Sultan: Rp {p.harga_sultan?.toLocaleString('id-ID')}</p>
-                      </> : 
-                      <p>Harga: Rp {p.harga_lite?.toLocaleString('id-ID')}</p>
-                    }
+                  <div className="field">
+                    <input type="number" placeholder="Harga" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
                   </div>
-                  <div className="btn-group">
-                    <button onClick={() => editProduct(p)} className="btn btn-blue" style={{flex:1}}>Edit</button>
-                    <button onClick={() => deleteProduct(p.id)} className="btn btn-red" style={{flex:1}}>Hapus</button>
+                )}
+
+                <div className="field">
+                  <input type="number" placeholder="Stok" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
+                </div>
+                
+                <div className="field">
+                  <textarea placeholder="Deskripsi produk: bahan, manfaat, keunikan" value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
+                </div>
+
+                <div className="field">
+                  <input placeholder="Link Gambar dari Imgur/Postimages (boleh kosong)" value={form.gambar_url} onChange={e => setForm({...form, gambar_url: e.target.value})} />
+                </div>
+
+                <div className="btn-row">
+                  <button type="submit" className="btn btn-simpan">Simpan</button>
+                  <button type="button" onClick={resetForm} className="btn btn-reset">Reset</button>
+                </div>
+              </form>
+            </div>
+
+            <div className="card">
+              <h2>Daftar Produk</h2>
+              {products.map(p => (
+                <div key={p.id} className="product-item">
+                  {p.gambar_url ? (
+                    <img src={p.gambar_url} alt={p.nama} className="product-img" onError={(e) => e.target.style.display='none'}/>
+                  ) : (
+                    <div className="product-img"></div>
+                  )}
+                  <div className="product-info">
+                    <div className="product-name">{p.nama}</div>
+                    {!p.punya_varian && <div className="price-tag">Rp{p.harga_lite?.toLocaleString('id-ID')}</div>}
+                  </div>
+                  <div className="product-actions">
+                    <button onClick={() => editProduct(p)} className="btn-edit">Edit</button>
+                    <button onClick={() => deleteProduct(p.id)} className="btn-hapus">Hapus</button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </>
   )
 }
