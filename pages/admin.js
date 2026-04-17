@@ -12,7 +12,9 @@ export default function Admin() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({
-    id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''
+    id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', 
+    stok: '', stok_lite: '', stok_healthy: '', stok_sultan: '', 
+    deskripsi: '', gambar_url: ''
   })
   const [login, setLogin] = useState({ email: 'totalfruit.id@gmail.com', password: '' })
   const [error, setError] = useState('')
@@ -57,7 +59,7 @@ export default function Admin() {
   }
 
   const resetForm = () => {
-    setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', deskripsi: '', gambar_url: ''})
+    setForm({id: '', nama: '', punya_varian: true, harga_lite: '', harga_healthy: '', harga_sultan: '', stok: '', stok_lite: '', stok_healthy: '', stok_sultan: '', deskripsi: '', gambar_url: ''})
   }
 
   const saveProduct = async (e) => {
@@ -77,9 +79,22 @@ export default function Admin() {
       harga_lite: parseInt(form.harga_lite) || 0,
       harga_healthy: parseInt(form.punya_varian? form.harga_healthy : form.harga_lite) || 0,
       harga_sultan: parseInt(form.punya_varian? form.harga_sultan : form.harga_lite) || 0,
-      stok: parseInt(form.stok) || 0,
       deskripsi: form.deskripsi,
       gambar_url: linkLengkap
+    }
+
+    // BAGIAN STOK GUE BENERIN DI SINI
+    if (form.punya_varian) {
+      payload.stok_lite = parseInt(form.stok_lite) || 0
+      payload.stok_healthy = parseInt(form.stok_healthy) || 0
+      payload.stok_sultan = parseInt(form.stok_sultan) || 0
+      delete payload.stok // hapus field stok lama kalo ada varian
+    } else {
+      payload.stok = parseInt(form.stok) || 0
+      // hapus field stok varian kalo gak ada varian
+      payload.stok_lite = null
+      payload.stok_healthy = null
+      payload.stok_sultan = null
     }
 
     try {
@@ -102,7 +117,11 @@ export default function Admin() {
     setForm({
       id: p.id, nama: p.nama || '', punya_varian: p.punya_varian !== false,
       harga_lite: p.harga_lite || '', harga_healthy: p.harga_healthy || '', harga_sultan: p.harga_sultan || '',
-      stok: p.stok || '', deskripsi: p.deskripsi || '',
+      stok: p.stok || '', 
+      stok_lite: p.stok_lite || '', 
+      stok_healthy: p.stok_healthy || '', 
+      stok_sultan: p.stok_sultan || '',
+      deskripsi: p.deskripsi || '',
       gambar_url: namaFile
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -191,20 +210,28 @@ export default function Admin() {
                 </div>
 
                 {form.punya_varian ? (
-                  <div className="harga-row">
-                    <input type="number" placeholder="Harga Lite" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
-                    <input type="number" placeholder="Harga Healthy" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} />
-                    <input type="number" placeholder="Harga Sultan" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} />
-                  </div>
+                  <>
+                    <div className="harga-row">
+                      <input type="number" placeholder="Harga Lite" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
+                      <input type="number" placeholder="Harga Healthy" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value})} />
+                      <input type="number" placeholder="Harga Sultan" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value})} />
+                    </div>
+                    <div className="harga-row">
+                      <input type="number" placeholder="Stok Lite" value={form.stok_lite} onChange={e => setForm({...form, stok_lite: e.target.value})} />
+                      <input type="number" placeholder="Stok Healthy" value={form.stok_healthy} onChange={e => setForm({...form, stok_healthy: e.target.value})} />
+                      <input type="number" placeholder="Stok Sultan" value={form.stok_sultan} onChange={e => setForm({...form, stok_sultan: e.target.value})} />
+                    </div>
+                  </>
                 ) : (
-                  <div className="field">
-                    <input type="number" placeholder="Harga" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
-                  </div>
+                  <>
+                    <div className="field">
+                      <input type="number" placeholder="Harga" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value})} />
+                    </div>
+                    <div className="field">
+                      <input type="number" placeholder="Stok" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
+                    </div>
+                  </>
                 )}
-
-                <div className="field">
-                  <input type="number" placeholder="Stok" value={form.stok} onChange={e => setForm({...form, stok: e.target.value})} />
-                </div>
                 
                 <div className="field">
                   <textarea placeholder="Deskripsi produk: bahan, manfaat, keunikan" value={form.deskripsi} onChange={e => setForm({...form, deskripsi: e.target.value})} />
@@ -234,6 +261,7 @@ export default function Admin() {
                   <div className="product-info">
                     <div className="product-name">{p.nama}</div>
                     {!p.punya_varian && <div className="price-tag">Rp{p.harga_lite?.toLocaleString('id-ID')}</div>}
+                    {p.punya_varian && <div className="price-tag">Lite: {p.stok_lite||0} | Healthy: {p.stok_healthy||0} | Sultan: {p.stok_sultan||0}</div>}
                   </div>
                   <div className="product-actions">
                     <button onClick={() => editProduct(p)} className="btn-edit">Edit</button>
