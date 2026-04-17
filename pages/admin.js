@@ -4,7 +4,7 @@ import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from "firebase/firestore"
 
-const BASE_URL_GAMBAR = "https://total-go.vercel.app/menu/"; // <-- CUMA NAMBAH INI DOANG DI LUAR
+const BASE_URL_GAMBAR = "https://totalgo.vercel.app/menu/"; // UDAH BENER, TANPA STRIP
 
 export default function Admin() {
   const [session, setSession] = useState(null)
@@ -71,9 +71,7 @@ export default function Admin() {
     }
     if (!form.punya_varian &&!form.harga_lite) return alert('Harga wajib diisi')
 
-    // === EDIT: GABUNGIN BASE URL PAS SAVE ===
     const linkLengkap = form.gambar_url ? BASE_URL_GAMBAR + form.gambar_url : null;
-    // === SELESAI EDIT ===
 
     const payload = {
       nama: form.nama,
@@ -83,7 +81,7 @@ export default function Admin() {
       harga_sultan: parseInt(form.punya_varian? form.harga_sultan : form.harga_lite) || 0,
       stok: parseInt(form.stok) || 0,
       deskripsi: form.deskripsi,
-      gambar_url: linkLengkap // <-- EDIT: PAKE linkLengkap
+      gambar_url: linkLengkap
     }
 
     try {
@@ -233,12 +231,12 @@ export default function Admin() {
           />
 
           <input 
-            placeholder="Nama file gambar: contoh menu-alpukat.png" 
+            placeholder="Nama file: menu-avocado.png" 
             value={form.gambar_url} 
             onChange={e => setForm({...form, gambar_url: e.target.value})}
             style={{width: '100%', padding: 8, marginBottom: 10}}
           />
-          <small>File harus ada di folder /public/menu/</small>
+          <small>Contoh: menu-avocado.png, menu-banana.png</small>
           <br/><br/>
 
           <button type="submit" style={{padding: '10px 20px', marginRight: 10}}>
