@@ -1,34 +1,60 @@
 import { useEffect, useState } from 'react';
 import { db } from "../lib/firebase";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 export default function Kasir() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("created_at", "desc"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOrders(data);
-      setLoading(false);
-    });
+    // Hapus orderBy dulu biar gak error kalo field created_at gaada
+    const q = query(collection(db, "orders"));
+    
+    const unsub = onSnapshot(q, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort manual di sini biar aman
+        data.sort((a, b) => {
+          const timeA = a.created_at?.seconds || 0;
+          const timeB = b.created_at?.seconds || 0;
+          return timeB - timeA;
+        });
+        setOrders(data);
+        setLoading(false);
+        setError('');
+      }, 
+      (err) => {
+        console.error("Error Firestore:", err);
+        setError('Gagal load data: ' + err.message);
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, []);
 
   const terimaPesanan = async (id) => {
-    await updateDoc(doc(db, "orders", id), { status: 'Diproses' });
+    try {
+      await updateDoc(doc(db, "orders", id), { status: 'Diproses' });
+    } catch (err) {
+      alert('Gagal update: ' + err.message);
+    }
   };
 
   const selesaiPesanan = async (id) => {
-    await deleteDoc(doc(db, "orders", id));
+    try {
+      await deleteDoc(doc(db, "orders", id));
+    } catch (err) {
+      alert('Gagal hapus: ' + err.message);
+    }
   };
 
   const totalHariIni = orders
     .filter(o => o.status === 'Diproses')
-    .reduce((sum, o) => sum + o.total, 0);
+    .reduce((sum, o) => sum + (o.total || 0), 0);
 
   if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
+  if (error) return <p style={{ padding: 20, color: 'red' }}>{error}</p>;
 
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
@@ -57,7 +83,7 @@ export default function Kasir() {
                 <td><b>{order.queue}</b></td>
                 <td>{order.nama}<br/><small>{order.alamat}</small></td>
                 <td>{order.items && order.items.map(i => `${i.nama} x${i.qty}`).join(', ')}</td>
-                <td>Rp {order.total.toLocaleString()}</td>
+                <td>Rp {(order.total || 0).toLocaleString()}</td>
                 <td>{order.metode}</td>
                 <td><b>{order.status || 'Baru'}</b></td>
                 <td>
