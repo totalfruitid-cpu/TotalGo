@@ -1,149 +1,167 @@
-import { useEffect, useState } from 'react';
-import { db, auth } from "../lib/firebase";
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, runTransaction } from "firebase/firestore";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, query, where, onSnapshot, doc, runTransaction } from 'firebase/firestore';
+import { auth, db } from '../firebase/config';
+import { toRupiah } from '../utils/formatters';
 
 export default function Kasir() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [user, setUser] = useState(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        router.push('/login');
+      }
       setLoading(false);
     });
-    return () => unsubAuth();
-  }, []);
+    return () => unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    const q = query(collection(db, "orders"));
-    const unsub = onSnapshot(q,
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id,...doc.data() }));
-        data.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
-        setOrders(data);
-        setLoading(false);
-        setError('');
-      },
-      (err) => {
-        setError('Gagal load data: ' + err.message);
-        setLoading(false);
-      }
-    );
-    return () => unsub();
+    const q = query(collection(db, "orders"), where("status", "==", "Baru"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const ordersData = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id }));
+      setOrders(ordersData);
+    });
+    return () => unsubscribe();
   }, [user]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err) {
-      alert('Login gagal: ' + err.message);
-    }
-  };
-
-  const handleLogout = () => signOut(auth);
-
-  // TERIMA PESANAN + KURANGI STOK VARIAN
   const terimaPesanan = async (order) => {
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Update status order
-        const orderRef = doc(db, "orders", order.id);
-        transaction.update(orderRef, { status: 'Diproses' });
+        // TAHAP 1: BACA SEMUA DATA DULU
+        const productDocs = [];
 
-        // 2. Kurangi stok per varian
-        if (!order.items || order.items.length === 0) return;
-
-        for (const item of order.items) {
-          if (!item.productId) throw new Error(`Item ${item.nama} gak ada productId`);
-          if (!item.varian) throw new Error(`Item ${item.nama} gak ada varian`);
+        for (const item of order.items || []) {
+          if (!item.productId) continue; // Skip order lama yg gak ada productId
 
           const productRef = doc(db, "products", item.productId);
           const productDoc = await transaction.get(productRef);
+          productDocs.push({ ref: productRef, doc: productDoc, item: item });
+        }
 
-          if (!productDoc.exists()) throw new Error(`Produk ${item.nama} gak ketemu di database`);
+        // TAHAP 2: VALIDASI STOK SEBELUM NULIS APAPUN
+        for (const { doc: productDoc, item } of productDocs) {
+          if (!productDoc.exists()) {
+            throw new Error(`Produk ${item.nama} gak ketemu di database`);
+          }
 
-          const fieldStok = `stok_${item.varian}`; // stok_lite / stok_healthy / stok_sultan
-          const stokLama = productDoc.data()[fieldStok]?? 0;
-          const stokBaru = stokLama - item.qty;
+          const productData = productDoc.data();
+          let fieldStok = 'stok';
 
-          if (stokBaru < 0) throw new Error(`Stok ${item.nama} ${item.varian} kurang! Sisa: ${stokLama}`);
+          if (productData.punya_varian) {
+            if (!item.varian || item.varian === 'single') {
+              throw new Error(`Item ${item.nama} harusnya punya varian`);
+            }
+            fieldStok = `stok_${item.varian}`;
+          }
 
+          const stokLama = productData[fieldStok]?? 0;
+          if (stokLama - item.qty < 0) {
+            throw new Error(`Stok ${item.nama} ${item.varian || ''} kurang! Sisa: ${stokLama}`);
+          }
+        }
+
+        // TAHAP 3: BARU LAKUIN SEMUA WRITE SETELAH BACA KELAR
+        const orderRef = doc(db, "orders", order.id);
+        transaction.update(orderRef, { status: 'Diproses' });
+
+        for (const { ref: productRef, doc: productDoc, item } of productDocs) {
+          const productData = productDoc.data();
+          let fieldStok = 'stok';
+          if (productData.punya_varian) {
+            fieldStok = `stok_${item.varian}`;
+          }
+          const stokBaru = (productData[fieldStok]?? 0) - item.qty;
           transaction.update(productRef, { [fieldStok]: stokBaru });
         }
       });
+
       alert('Pesanan diterima & stok udah dikurangi');
     } catch (err) {
+      console.error("ERROR DETAIL KASIR:", err);
       alert('Gagal proses: ' + err.message);
     }
   };
 
-  const selesaiPesanan = async (id) => {
+  const selesaikanPesanan = async (id) => {
+    const orderRef = doc(db, "orders", id);
     try {
-      await deleteDoc(doc(db, "orders", id));
+      await runTransaction(db, async (transaction) => {
+        transaction.update(orderRef, { status: 'Selesai' });
+      });
+      alert('Pesanan selesai');
     } catch (err) {
-      alert('Gagal hapus: ' + err.message);
+      alert('Gagal menyelesaikan: ' + err.message);
     }
   };
 
-  const totalHariIni = orders
-.filter(o => o.status === 'Diproses')
-.reduce((sum, o) => sum + (o.total || 0), 0);
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
 
-  if (!user) {
-    return (
-      <div style={{ padding: 20, fontFamily: 'sans-serif', maxWidth: 300, margin: 'auto', marginTop: 100 }}>
-        <h2>Login Kasir TotalGo</h2>
-        <form onSubmit={handleLogin}>
-          <input type="email" placeholder="Email Kasir" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 10 }} />
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 10 }} />
-          <button type="submit" style={{ width: '100%', padding: 10 }}>Login</button>
-        </form>
-      </div>
-    );
-  }
-
-  if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
-  if (error) return <p style={{ padding: 20, color: 'red' }}>{error}</p>;
+  if (loading) return <p>Loading...</p>;
 
   return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div className="container">
+      <style jsx global>{`
+        body { background-color: #f8f9fa; font-family: sans-serif; }
+       .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+       .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        h1 { font-size: 2.5rem; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f2f2f2; }
+       .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
+       .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+       .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+      `}</style>
+      <div className="header">
         <h1>Dashboard Kasir TotalGo</h1>
-        <button onClick={handleLogout}>Logout</button>
+        <button onClick={handleLogout} className="btn-logout">Logout</button>
       </div>
-      <h3>Total Pemasukan Diproses: Rp {totalHariIni.toLocaleString()}</h3>
       <h2>Pesanan Masuk</h2>
-      {orders.length === 0? (
-        <p>Belum ada pesanan masuk.</p>
-      ) : (
-        <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr style={{ background: '#f0f0f0' }}><th>Antrian</th><th>Nama</th><th>Pesanan</th><th>Total</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.id}>
-                <td><b>{order.queue}</b></td>
-                <td>{order.nama}<br/><small>{order.alamat}</small></td>
-                <td>{order.items && order.items.map(i => `${i.nama} ${i.varian} x${i.qty}`).join(', ')}</td>
-                <td>Rp {(order.total || 0).toLocaleString()}</td>
-                <td>{order.metode}</td>
-                <td><b>{order.status || 'Baru'}</b></td>
-                <td>
-                  {order.status!== 'Diproses' && <button onClick={() => terimaPesanan(order)} style={{ marginRight: 5 }}>Terima</button>}
-                  <button onClick={() => selesaiPesanan(order.id)}>Selesai</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <table>
+        <thead>
+          <tr>
+            <th>Antrian</th>
+            <th>Nama</th>
+            <th>Pesanan</th>
+            <th>Total</th>
+            <th>Metode</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map(order => (
+            <tr key={order.id}>
+              <td>{order.queue}</td>
+              <td>{order.nama} <br/> <small>{order.metode}</small></td>
+              <td>
+                {order.items?.map((item, idx) => (
+                  <div key={idx}>{item.nama} {item.varian!== 'single'? item.varian : ''} x{item.qty}</div>
+                ))}
+              </td>
+              <td>{toRupiah(order.total)}</td>
+              <td>{order.metode}</td>
+              <td>{order.status}</td>
+              <td>
+                <button onClick={() => terimaPesanan(order)} className="btn-terima">Terima</button>
+                <button onClick={() => selesaikanPesanan(order.id)} className="btn-selesai">Selesai</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
