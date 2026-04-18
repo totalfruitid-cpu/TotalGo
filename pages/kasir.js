@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head'; // <- TAMBAHAN BUAT PWA
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, doc, runTransaction } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase'; // <- INI UDAH BENER PATH-NYA
+import { auth, db } from '../lib/firebase';
 
 export default function Kasir() {
   const [user, setUser] = useState(null);
@@ -31,7 +32,7 @@ export default function Kasir() {
       setOrders(ordersData);
     });
     return () => unsubscribe();
-  }, );
+  }, [user]); // <- UDAH GUE BENERIN, TADI KOSONG
 
   const terimaPesanan = async (order) => {
     try {
@@ -91,57 +92,63 @@ export default function Kasir() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="container">
-      <style jsx global>{`
-        body { background-color: #f8f9fa; font-family: sans-serif; }
-     .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-     .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        h1 { font-size: 2.5rem; }
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #f2f2f2; }
-     .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
-     .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-     .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
-      `}</style>
-      <div className="header">
-        <h1>Dashboard Kasir TotalGo</h1>
-        <button onClick={handleLogout} className="btn-logout">Logout</button>
-      </div>
-      <h2>Pesanan Masuk</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Antrian</th>
-            <th>Nama</th>
-            <th>Pesanan</th>
-            <th>Total</th>
-            <th>Metode</th>
-            <th>Status</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(order => (
-            <tr key={order.id}>
-              <td>{order.queue}</td>
-              <td>{order.nama} <br/> <small>{order.metode}</small></td>
-              <td>
-                {order.items?.map((item, idx) => (
-                  <div key={idx}>{item.nama} {item.varian!== 'single'? item.varian : ''} x{item.qty}</div>
-                ))}
-              </td>
-              <td>{toRupiah(order.total)}</td>
-              <td>{order.metode}</td>
-              <td>{order.status}</td>
-              <td>
-                <button onClick={() => terimaPesanan(order)} className="btn-terima">Terima</button>
-                <button onClick={() => selesaikanPesanan(order.id)} className="btn-selesai">Selesai</button>
-              </td>
+    <>
+      <Head>
+        <link rel="manifest" href="/manifest-kasir.json" />
+        <title>Kasir TotalGo</title>
+      </Head>
+      <div className="container">
+        <style jsx global>{`
+          body { background-color: #f8f9fa; font-family: sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+          h1 { font-size: 2.5rem; }
+          table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; }
+          th { background-color: #f2f2f2; }
+        .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
+        .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+        .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        `}</style>
+        <div className="header">
+          <h1>Dashboard Kasir TotalGo</h1>
+          <button onClick={handleLogout} className="btn-logout">Logout</button>
+        </div>
+        <h2>Pesanan Masuk</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Antrian</th>
+              <th>Nama</th>
+              <th>Pesanan</th>
+              <th>Total</th>
+              <th>Metode</th>
+              <th>Status</th>
+              <th>Aksi</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {orders.map(order => (
+              <tr key={order.id}>
+                <td>{order.queue}</td>
+                <td>{order.nama} <br/> <small>{order.metode}</small></td>
+                <td>
+                  {order.items?.map((item, idx) => (
+                    <div key={idx}>{item.nama} {item.varian!== 'single'? item.varian : ''} x{item.qty}</div>
+                  ))}
+                </td>
+                <td>{toRupiah(order.total)}</td>
+                <td>{order.metode}</td>
+                <td>{order.status}</td>
+                <td>
+                  <button onClick={() => terimaPesanan(order)} className="btn-terima">Terima</button>
+                  <button onClick={() => selesaikanPesanan(order.id)} className="btn-selesai">Selesai</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
