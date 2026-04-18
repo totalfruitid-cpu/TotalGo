@@ -1,38 +1,54 @@
 import { useEffect, useState } from 'react';
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 export default function Kasir() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
-    // Hapus orderBy dulu biar gak error kalo field created_at gaada
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
     const q = query(collection(db, "orders"));
-    
-    const unsub = onSnapshot(q, 
+    const unsub = onSnapshot(q,
       (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Sort manual di sini biar aman
-        data.sort((a, b) => {
-          const timeA = a.created_at?.seconds || 0;
-          const timeB = b.created_at?.seconds || 0;
-          return timeB - timeA;
-        });
+        const data = snapshot.docs.map(doc => ({ id: doc.id,...doc.data() }));
+        data.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0));
         setOrders(data);
         setLoading(false);
         setError('');
-      }, 
+      },
       (err) => {
-        console.error("Error Firestore:", err);
         setError('Gagal load data: ' + err.message);
         setLoading(false);
       }
     );
     return () => unsub();
-  }, []);
+  }, [user]);
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      alert('Login gagal: ' + err.message);
+    }
+  };
+
+  const handleLogout = () => signOut(auth);
   const terimaPesanan = async (id) => {
     try {
       await updateDoc(doc(db, "orders", id), { status: 'Diproses' });
@@ -40,7 +56,6 @@ export default function Kasir() {
       alert('Gagal update: ' + err.message);
     }
   };
-
   const selesaiPesanan = async (id) => {
     try {
       await deleteDoc(doc(db, "orders", id));
@@ -50,33 +65,38 @@ export default function Kasir() {
   };
 
   const totalHariIni = orders
-    .filter(o => o.status === 'Diproses')
-    .reduce((sum, o) => sum + (o.total || 0), 0);
+  .filter(o => o.status === 'Diproses')
+  .reduce((sum, o) => sum + (o.total || 0), 0);
+
+  if (!user) {
+    return (
+      <div style={{ padding: 20, fontFamily: 'sans-serif', maxWidth: 300, margin: 'auto', marginTop: 100 }}>
+        <h2>Login Kasir TotalGo</h2>
+        <form onSubmit={handleLogin}>
+          <input type="email" placeholder="Email Kasir" value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 10 }} />
+          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: 8, marginBottom: 10 }} />
+          <button type="submit" style={{ width: '100%', padding: 10 }}>Login</button>
+        </form>
+      </div>
+    );
+  }
 
   if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
   if (error) return <p style={{ padding: 20, color: 'red' }}>{error}</p>;
 
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <h1>Dashboard Kasir TotalGo</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <h1>Dashboard Kasir TotalGo</h1>
+        <button onClick={handleLogout}>Logout</button>
+      </div>
       <h3>Total Pemasukan Diproses: Rp {totalHariIni.toLocaleString()}</h3>
-      
       <h2>Pesanan Masuk</h2>
-      {orders.length === 0 ? (
+      {orders.length === 0? (
         <p>Belum ada pesanan masuk.</p>
       ) : (
         <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f0f0f0' }}>
-              <th>Antrian</th>
-              <th>Nama</th>
-              <th>Pesanan</th>
-              <th>Total</th>
-              <th>Metode</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
+          <thead><tr style={{ background: '#f0f0f0' }}><th>Antrian</th><th>Nama</th><th>Pesanan</th><th>Total</th><th>Metode</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
             {orders.map((order) => (
               <tr key={order.id}>
@@ -87,14 +107,8 @@ export default function Kasir() {
                 <td>{order.metode}</td>
                 <td><b>{order.status || 'Baru'}</b></td>
                 <td>
-                  {order.status !== 'Diproses' && (
-                    <button onClick={() => terimaPesanan(order.id)} style={{ marginRight: 5 }}>
-                      Terima
-                    </button>
-                  )}
-                  <button onClick={() => selesaiPesanan(order.id)}>
-                    Selesai
-                  </button>
+                  {order.status!== 'Diproses' && <button onClick={() => terimaPesanan(order.id)} style={{ marginRight: 5 }}>Terima</button>}
+                  <button onClick={() => selesaiPesanan(order.id)}>Selesai</button>
                 </td>
               </tr>
             ))}
