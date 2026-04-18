@@ -16,26 +16,37 @@ const poppins = Poppins({
 
 const WA_NUMBER = '6285124441513';
 
-// ... fungsi playClick sama generateQueueNumber tetep ...
+function playClick() {
+  // ... kode playClick lu ...
+}
+
+function generateQueueNumber() {
+  // ... kode generateQueueNumber lu ...
+}
 
 export default function Home() {
-  // ... semua state lu tetep ...
+  const [menu, setMenu] = useState([]);
+  const [cart, setCart] = useState([]);
+  // ... state lu yg lain ...
+  
+  // ... useEffect + function lu yg lain ...
 
   return (
     <>
       <Head>
         <title>TotalGo - Fast.Fresh.Prime</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        
-        {/* TAMBAHIN 2 BARIS INI SULTAN 👇 */}
-        <link rel="manifest" href="/manifest-user.json" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ea580c" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TotalGo" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        {/* SAMPE SINI 👆 */}
       </Head>
 
       <div className="wrap">
-        {/* ... sisa kode lu biarin aja, udah bener ... */}
+        {/* ... semua JSX menu, cart, form order lu di sini ... */}
+      </div>
+    </>
+  );
+}
