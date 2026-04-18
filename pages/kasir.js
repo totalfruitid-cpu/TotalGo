@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head'; // <- TAMBAHAN BUAT PWA
+import Head from 'next/head';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, doc, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -32,7 +32,7 @@ export default function Kasir() {
       setOrders(ordersData);
     });
     return () => unsubscribe();
-  }, [user]); // <- UDAH GUE BENERIN, TADI KOSONG
+  }, [user]);
 
   const terimaPesanan = async (order) => {
     try {
@@ -94,21 +94,30 @@ export default function Kasir() {
   return (
     <>
       <Head>
-        <link rel="manifest" href="/manifest-kasir.json" />
         <title>Kasir TotalGo</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* CUMA 6 BARIS INI YG GUE TAMBAHIN SULTAN 👇 */}
+        <link rel="manifest" href="/manifest-kasir.json" />
+        <meta name="theme-color" content="#16a34a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Kasir TG" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* UDAH, CUMA SEGITU DOANG YG GUE SENTUH 👆 */}
       </Head>
       <div className="container">
         <style jsx global>{`
           body { background-color: #f8f9fa; font-family: sans-serif; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+       .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+       .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
           h1 { font-size: 2.5rem; }
           table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
           th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; }
           th { background-color: #f2f2f2; }
-        .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
-        .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-        .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+       .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
+       .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+       .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
         `}</style>
         <div className="header">
           <h1>Dashboard Kasir TotalGo</h1>
