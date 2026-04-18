@@ -1,10 +1,10 @@
 {
-  "name": "Admin TotalGo",
-  "short_name": "TotalGo Admin",
-  "description": "Dashboard admin TotalGo",
-  "start_url": "/admin",
+  "name": "TotalGo",
+  "short_name": "TotalGo",
+  "description": "Pesan jus segar TotalGo",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#fefce8",
+  "background_color": "#ffffff",
   "theme_color": "#ea580c",
   "orientation": "portrait",
   "icons": [
