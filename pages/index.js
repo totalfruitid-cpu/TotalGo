@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from "../lib/firebase"
-import { collection, getDocs, orderBy, query, doc, updateDoc, increment } from "firebase/firestore"
+import { collection, getDocs, orderBy, query, addDoc, serverTimestamp } from "firebase/firestore"
 import Head from 'next/head';
 import { Montserrat, Poppins } from 'next/font/google'
 
@@ -99,58 +99,61 @@ export default function Home() {
 
   const getTotal = () => cart.reduce((sum, i) => sum + i.harga * i.qty, 0);
 
+  // CHECKOUT UDAH DIBENERIN: STOK GAK DIKURANGIN DISINI
   const handleCheckout = async () => {
     if (!nama) return alert('Isi nama dulu bro');
-    if (metode === 'COD' &&!alamat) return alert('COD wajib isi alamat bro');
+    if (metode === 'COD' && !alamat) return alert('COD wajib isi alamat bro');
     if (cart.length === 0) return alert('Keranjang kosong bro');
 
     playClick();
     const queue = generateQueueNumber();
-    
-    try {
-      for (const item of cart) {
-        const productRef = doc(db, "products", item.id);
-        if (item.punya_varian) {
-          if (item.size === 'Lite') await updateDoc(productRef, { stok_lite: increment(-item.qty) });
-          if (item.size === 'Healthy') await updateDoc(productRef, { stok_healthy: increment(-item.qty) });
-          if (item.size === 'Sultan') await updateDoc(productRef, { stok_sultan: increment(-item.qty) });
-        } else {
-          await updateDoc(productRef, { stok: increment(-item.qty) });
-        }
-      }
-    } catch (error) {
-      console.error("Gagal update stok:", error);
-      return alert('Gagal update stok, coba lagi bro');
-    }
+
+    // FORMAT ITEMS BUAT KASIR: WAJIB ADA productId + varian
+    const itemsUntukOrder = cart.map(item => ({
+      productId: item.id, // ID dokumen dari collection products
+      nama: item.nama,
+      varian: item.punya_varian ? item.size.toLowerCase() : 'single', // hasil: lite/healthy/sultan/single
+      qty: item.qty,
+      harga: item.harga
+    }));
 
     const data = {
       queue: queue,
-      items: [...cart],
+      items: itemsUntukOrder,
       total: getTotal(),
       nama: nama,
-      alamat: metode === 'COD'? alamat : 'Ambil di Tempat',
+      alamat: metode === 'COD' ? alamat : 'Ambil di Tempat',
       metode: metode,
-      waktu: new Date().toLocaleString('id-ID')
+      status: 'Baru', // Status awal, nanti diupdate kasir jadi 'Diproses'
+      waktu: new Date().toLocaleString('id-ID'),
+      created_at: serverTimestamp() // Buat sorting di kasir
     };
 
-    setOrderData(data);
-    setShowCheckout(false);
-    setShowReceipt(true);
-    loadProducts();
+    try {
+      // CUMA BIKIN ORDER. STOK DIURUS KASIR
+      await addDoc(collection(db, "orders"), data);
+      
+      setOrderData(data);
+      setShowCheckout(false);
+      setShowReceipt(true);
 
-    let text = `*PESANAN TOTALGO*%0A`;
-    text += `No. Antrian: *${queue}*%0A%0A`;
-    data.items.forEach(i => {
-      const namaItem = i.punya_varian? `${i.nama} ${i.size}` : i.nama;
-      text += `- ${namaItem} x${i.qty} = Rp${(i.harga * i.qty).toLocaleString()}%0A`;
-    });
-    text += `%0ATotal: *Rp${data.total.toLocaleString()}*%0A`;
-    text += `Nama: ${data.nama}%0A`;
-    text += `Metode: ${data.metode}%0A`;
-    if(metode === 'COD') text += `Alamat: ${data.alamat}%0A`;
+      let text = `*PESANAN TOTALGO*%0A`;
+      text += `No. Antrian: *${queue}*%0A%0A`;
+      data.items.forEach(i => {
+        const namaItem = i.varian !== 'single' ? `${i.nama} ${i.varian}` : i.nama;
+        text += `- ${namaItem} x${i.qty} = Rp${(i.harga * i.qty).toLocaleString()}%0A`;
+      });
+      text += `%0ATotal: *Rp${data.total.toLocaleString()}*%0A`;
+      text += `Nama: ${data.nama}%0A`;
+      text += `Metode: ${data.metode}%0A`;
+      if(metode === 'COD') text += `Alamat: ${data.alamat}%0A`;
 
-    window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
-    setCart([]);
+      window.open(`https://wa.me/${WA_NUMBER}?text=${text}`, '_blank');
+      setCart([]);
+    } catch (error) {
+      console.error("Gagal bikin pesanan:", error);
+      return alert('Gagal bikin pesanan, coba lagi bro');
+    }
   };
 
   const closeReceipt = () => {
@@ -299,7 +302,7 @@ export default function Home() {
                 <div className="line"></div>
                 {orderData.items.map((i, idx) => (
                   <div key={idx} className="receipt-item">
-                    <span>{i.nama} {i.size} x{i.qty}</span>
+                    <span>{i.nama} {i.varian !== 'single' ? i.varian : ''} x{i.qty}</span>
                     <span>Rp{(i.harga * i.qty).toLocaleString()}</span>
                   </div>
                 ))}
