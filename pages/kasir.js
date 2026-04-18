@@ -50,31 +50,33 @@ export default function Kasir() {
 
   const handleLogout = () => signOut(auth);
 
-  // UPGRADE: Terima pesanan + kurangi stok pake Transaction
+  // TERIMA PESANAN + KURANGI STOK VARIAN
   const terimaPesanan = async (order) => {
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Update status order jadi 'Diproses'
+        // 1. Update status order
         const orderRef = doc(db, "orders", order.id);
         transaction.update(orderRef, { status: 'Diproses' });
 
-        // 2. Loop semua item, kurangi stok di collection 'menu'
+        // 2. Kurangi stok per varian
         if (!order.items || order.items.length === 0) return;
 
         for (const item of order.items) {
-          if (!item.menuId) throw new Error(`Item ${item.nama} gak ada menuId`);
+          if (!item.productId) throw new Error(`Item ${item.nama} gak ada productId`);
+          if (!item.varian) throw new Error(`Item ${item.nama} gak ada varian`);
 
-          const menuRef = doc(db, "menu", item.menuId);
-          const menuDoc = await transaction.get(menuRef);
+          const productRef = doc(db, "products", item.productId);
+          const productDoc = await transaction.get(productRef);
 
-          if (!menuDoc.exists()) throw new Error(`Menu ${item.nama} gak ketemu di database`);
+          if (!productDoc.exists()) throw new Error(`Produk ${item.nama} gak ketemu di database`);
 
-          const stokLama = menuDoc.data().stok || 0;
+          const fieldStok = `stok_${item.varian}`; // stok_lite / stok_healthy / stok_sultan
+          const stokLama = productDoc.data()[fieldStok]?? 0;
           const stokBaru = stokLama - item.qty;
 
-          if (stokBaru < 0) throw new Error(`Stok ${item.nama} kurang! Sisa: ${stokLama}`);
+          if (stokBaru < 0) throw new Error(`Stok ${item.nama} ${item.varian} kurang! Sisa: ${stokLama}`);
 
-          transaction.update(menuRef, { stok: stokBaru });
+          transaction.update(productRef, { [fieldStok]: stokBaru });
         }
       });
       alert('Pesanan diterima & stok udah dikurangi');
@@ -92,8 +94,8 @@ export default function Kasir() {
   };
 
   const totalHariIni = orders
- .filter(o => o.status === 'Diproses')
- .reduce((sum, o) => sum + (o.total || 0), 0);
+.filter(o => o.status === 'Diproses')
+.reduce((sum, o) => sum + (o.total || 0), 0);
 
   if (!user) {
     return (
@@ -129,7 +131,7 @@ export default function Kasir() {
               <tr key={order.id}>
                 <td><b>{order.queue}</b></td>
                 <td>{order.nama}<br/><small>{order.alamat}</small></td>
-                <td>{order.items && order.items.map(i => `${i.nama} x${i.qty}`).join(', ')}</td>
+                <td>{order.items && order.items.map(i => `${i.nama} ${i.varian} x${i.qty}`).join(', ')}</td>
                 <td>Rp {(order.total || 0).toLocaleString()}</td>
                 <td>{order.metode}</td>
                 <td><b>{order.status || 'Baru'}</b></td>
