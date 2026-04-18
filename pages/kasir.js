@@ -16,14 +16,19 @@ export default function Kasir() {
     );
     setOrders(newOrders);
     localStorage.setItem('pesanan', JSON.stringify(newOrders));
-    alert('Pesanan diterima!');
   };
 
   const selesaiPesanan = (id) => {
     const newOrders = orders.filter(order => order.id !== id);
     setOrders(newOrders);
     localStorage.setItem('pesanan', JSON.stringify(newOrders));
-    alert('Pesanan selesai!');
+  };
+
+  const tambahDummy = () => {
+    const dummy = {id: Date.now(), nama:'Customer Tes', items:[{nama:'Paket Sultan', qty:1}], total:25000, status:'Baru'};
+    const newOrders = [...orders, dummy];
+    setOrders(newOrders);
+    localStorage.setItem('pesanan', JSON.stringify(newOrders));
   };
 
   const totalHariIni = orders
@@ -36,6 +41,7 @@ export default function Kasir() {
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
       <h1>Dashboard Kasir TotalGo</h1>
       <h3>Total Pemasukan Diproses: Rp {totalHariIni.toLocaleString()}</h3>
+      <button onClick={tambahDummy} style={{marginBottom:20, padding:10}}>Tambah Pesanan Dummy</button>
       
       <h2>Pesanan Masuk</h2>
       {orders.length === 0 ? (
@@ -55,20 +61,12 @@ export default function Kasir() {
             {orders.map((order) => (
               <tr key={order.id}>
                 <td>{order.nama}</td>
-                <td>
-                  {order.items && order.items.map(i => `${i.nama} x${i.qty}`).join(', ')}
-                </td>
+                <td>{order.items && order.items.map(i => `${i.nama} x${i.qty}`).join(', ')}</td>
                 <td>Rp {order.total.toLocaleString()}</td>
                 <td><b>{order.status || 'Baru'}</b></td>
                 <td>
-                  {order.status !== 'Diproses' && (
-                    <button onClick={() => terimaPesanan(order.id)} style={{ marginRight: 5 }}>
-                      Terima
-                    </button>
-                  )}
-                  <button onClick={() => selesaiPesanan(order.id)}>
-                    Selesai
-                  </button>
+                  {order.status !== 'Diproses' && <button onClick={() => terimaPesanan(order.id)}>Terima</button>}
+                  <button onClick={() => selesaiPesanan(order.id)} style={{marginLeft:5}}>Selesai</button>
                 </td>
               </tr>
             ))}
