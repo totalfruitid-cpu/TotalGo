@@ -4,10 +4,7 @@ export default function Kasir() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Ambil data pesanan dari API / localStorage / Firebase lu
   useEffect(() => {
-    // GANTI BAGIAN INI SESUAI DATABASE LU
-    // Contoh pake localStorage dulu biar jalan:
     const data = JSON.parse(localStorage.getItem('pesanan') || '[]');
     setOrders(data);
     setLoading(false);
@@ -33,7 +30,7 @@ export default function Kasir() {
     .filter(o => o.status === 'Diproses')
     .reduce((sum, o) => sum + o.total, 0);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p style={{ padding: 20 }}>Loading...</p>;
 
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
@@ -58,4 +55,26 @@ export default function Kasir() {
             {orders.map((order) => (
               <tr key={order.id}>
                 <td>{order.nama}</td>
-               
+                <td>
+                  {order.items && order.items.map(i => `${i.nama} x${i.qty}`).join(', ')}
+                </td>
+                <td>Rp {order.total.toLocaleString()}</td>
+                <td><b>{order.status || 'Baru'}</b></td>
+                <td>
+                  {order.status !== 'Diproses' && (
+                    <button onClick={() => terimaPesanan(order.id)} style={{ marginRight: 5 }}>
+                      Terima
+                    </button>
+                  )}
+                  <button onClick={() => selesaiPesanan(order.id)}>
+                    Selesai
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
