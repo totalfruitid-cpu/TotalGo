@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db, auth } from "../lib/firebase";
-import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, updateDoc, deleteDoc, runTransaction } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 export default function Kasir() {
@@ -49,13 +49,40 @@ export default function Kasir() {
   };
 
   const handleLogout = () => signOut(auth);
-  const terimaPesanan = async (id) => {
+
+  // UPGRADE: Terima pesanan + kurangi stok pake Transaction
+  const terimaPesanan = async (order) => {
     try {
-      await updateDoc(doc(db, "orders", id), { status: 'Diproses' });
+      await runTransaction(db, async (transaction) => {
+        // 1. Update status order jadi 'Diproses'
+        const orderRef = doc(db, "orders", order.id);
+        transaction.update(orderRef, { status: 'Diproses' });
+
+        // 2. Loop semua item, kurangi stok di collection 'menu'
+        if (!order.items || order.items.length === 0) return;
+
+        for (const item of order.items) {
+          if (!item.menuId) throw new Error(`Item ${item.nama} gak ada menuId`);
+
+          const menuRef = doc(db, "menu", item.menuId);
+          const menuDoc = await transaction.get(menuRef);
+
+          if (!menuDoc.exists()) throw new Error(`Menu ${item.nama} gak ketemu di database`);
+
+          const stokLama = menuDoc.data().stok || 0;
+          const stokBaru = stokLama - item.qty;
+
+          if (stokBaru < 0) throw new Error(`Stok ${item.nama} kurang! Sisa: ${stokLama}`);
+
+          transaction.update(menuRef, { stok: stokBaru });
+        }
+      });
+      alert('Pesanan diterima & stok udah dikurangi');
     } catch (err) {
-      alert('Gagal update: ' + err.message);
+      alert('Gagal proses: ' + err.message);
     }
   };
+
   const selesaiPesanan = async (id) => {
     try {
       await deleteDoc(doc(db, "orders", id));
@@ -65,8 +92,8 @@ export default function Kasir() {
   };
 
   const totalHariIni = orders
-  .filter(o => o.status === 'Diproses')
-  .reduce((sum, o) => sum + (o.total || 0), 0);
+ .filter(o => o.status === 'Diproses')
+ .reduce((sum, o) => sum + (o.total || 0), 0);
 
   if (!user) {
     return (
@@ -107,7 +134,7 @@ export default function Kasir() {
                 <td>{order.metode}</td>
                 <td><b>{order.status || 'Baru'}</b></td>
                 <td>
-                  {order.status!== 'Diproses' && <button onClick={() => terimaPesanan(order.id)} style={{ marginRight: 5 }}>Terima</button>}
+                  {order.status!== 'Diproses' && <button onClick={() => terimaPesanan(order)} style={{ marginRight: 5 }}>Terima</button>}
                   <button onClick={() => selesaiPesanan(order.id)}>Selesai</button>
                 </td>
               </tr>
