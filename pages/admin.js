@@ -141,7 +141,19 @@ export default function Admin() {
 
   return (
     <>
-      <Head><title>Dashboard Produk</title></Head>
+      <Head>
+        <title>TotalGo Admin</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        
+        {/* CUMA 6 BARIS INI YG GUE TAMBAHIN SULTAN 👇 */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1f2937" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="TotalGo Admin" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* UDAH, CUMA SEGITU DOANG YG GUE SENTUH 👆 */}
+      </Head>
       <style jsx>{`
         .wrap { max-width: 600px; margin: 0 auto; padding: 16px; font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
