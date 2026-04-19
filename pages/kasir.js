@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, onSnapshot, doc, runTransaction } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  runTransaction,
+  getDocs
+} from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 export default function Kasir() {
@@ -12,75 +20,146 @@ export default function Kasir() {
   const router = useRouter();
 
   const toRupiah = (angka) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
-  }
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(angka || 0);
+  };
 
+  // 🔐 SECURITY CHECK (FIXED)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) setUser(currentUser);
-      else router.push('/login');
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const q = query(
+          collection(db, "users"),
+          where("email", "==", currentUser.email)
+        );
+
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          router.push('/login');
+          return;
+        }
+
+        const userData = snap.docs[0].data();
+
+        // hanya kasir yang boleh masuk
+        if (userData.role !== "kasir") {
+          router.push('/login');
+          return;
+        }
+
+        setUser(currentUser);
+      } catch (err) {
+        console.error(err);
+        router.push('/login');
+      }
+
       setLoading(false);
     });
-    return () => unsubscribe();
-  }, [router]);
 
+    return () => unsub();
+  }, []);
+
+  // 🔄 ORDER LIST
   useEffect(() => {
     if (!user) return;
+
     const q = query(collection(db, "orders"), where("status", "==", "Baru"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const ordersData = querySnapshot.docs.map(doc => ({...doc.data(), id: doc.id }));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersData = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }));
       setOrders(ordersData);
     });
+
     return () => unsubscribe();
   }, [user]);
 
+  // ✅ TERIMA PESANAN
   const terimaPesanan = async (order) => {
     try {
       await runTransaction(db, async (transaction) => {
         const productDocs = [];
+
         for (const item of order.items || []) {
           if (!item.productId) continue;
+
           const productRef = doc(db, "products", item.productId);
-          const productDoc = await transaction.get(productRef);
-          productDocs.push({ ref: productRef, doc: productDoc, item: item });
+          const productSnap = await transaction.get(productRef);
+
+          productDocs.push({
+            ref: productRef,
+            doc: productSnap,
+            item
+          });
         }
+
         for (const { doc: productDoc, item } of productDocs) {
-          if (!productDoc.exists()) throw new Error(`Produk ${item.nama} gak ketemu`);
+          if (!productDoc.exists()) {
+            throw new Error(`Produk ${item.nama} tidak ditemukan`);
+          }
+
           const productData = productDoc.data();
+
           let fieldStok = 'stok';
           if (productData.punya_varian) {
-            if (!item.varian || item.varian === 'single') throw new Error(`Item ${item.nama} harusnya punya varian`);
             fieldStok = `stok_${item.varian}`;
           }
-          const stokLama = productData[fieldStok]?? 0;
-          if (stokLama - item.qty < 0) throw new Error(`Stok ${item.nama} ${item.varian || ''} kurang! Sisa: ${stokLama}`);
+
+          const stokLama = productData[fieldStok] || 0;
+
+          if (stokLama - item.qty < 0) {
+            throw new Error(`Stok ${item.nama} kurang`);
+          }
         }
+
         const orderRef = doc(db, "orders", order.id);
         transaction.update(orderRef, { status: 'Diproses' });
-        for (const { ref: productRef, doc: productDoc, item } of productDocs) {
+
+        for (const { ref, doc: productDoc, item } of productDocs) {
           const productData = productDoc.data();
+
           let fieldStok = 'stok';
-          if (productData.punya_varian) fieldStok = `stok_${item.varian}`;
-          const stokBaru = (productData[fieldStok]?? 0) - item.qty;
-          transaction.update(productRef, { [fieldStok]: stokBaru });
+          if (productData.punya_varian) {
+            fieldStok = `stok_${item.varian}`;
+          }
+
+          const stokBaru = (productData[fieldStok] || 0) - item.qty;
+
+          transaction.update(ref, {
+            [fieldStok]: stokBaru
+          });
         }
       });
-      alert('Pesanan diterima & stok udah dikurangi');
+
+      alert('Pesanan diterima & stok berkurang');
     } catch (err) {
-      console.error("ERROR DETAIL KASIR:", err);
-      alert('Gagal proses: ' + err.message);
+      console.error(err);
+      alert(err.message);
     }
   };
 
+  // ✅ SELESAI PESANAN
   const selesaikanPesanan = async (id) => {
-    const orderRef = doc(db, "orders", id);
     try {
       await runTransaction(db, async (transaction) => {
-        transaction.update(orderRef, { status: 'Selesai' });
+        const ref = doc(db, "orders", id);
+        transaction.update(ref, { status: 'Selesai' });
       });
+
       alert('Pesanan selesai');
     } catch (err) {
-      alert('Gagal menyelesaikan: ' + err.message);
+      alert(err.message);
     }
   };
 
@@ -96,34 +175,20 @@ export default function Kasir() {
       <Head>
         <title>Kasir TotalGo</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-        {/* CUMA 6 BARIS INI YG GUE TAMBAHIN SULTAN 👇 */}
         <link rel="manifest" href="/manifest-kasir.json" />
         <meta name="theme-color" content="#16a34a" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Kasir TG" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        {/* UDAH, CUMA SEGITU DOANG YG GUE SENTUH 👆 */}
       </Head>
+
       <div className="container">
-        <style jsx global>{`
-          body { background-color: #f8f9fa; font-family: sans-serif; }
-       .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-       .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-          h1 { font-size: 2.5rem; }
-          table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-          th, td { padding: 15px; border-bottom: 1px solid #ddd; text-align: left; }
-          th { background-color: #f2f2f2; }
-       .btn-terima { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
-       .btn-selesai { background-color: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-       .btn-logout { background-color: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
-        `}</style>
         <div className="header">
           <h1>Dashboard Kasir TotalGo</h1>
-          <button onClick={handleLogout} className="btn-logout">Logout</button>
+          <button onClick={handleLogout} className="btn-logout">
+            Logout
+          </button>
         </div>
+
         <h2>Pesanan Masuk</h2>
+
         <table>
           <thead>
             <tr>
@@ -136,28 +201,46 @@ export default function Kasir() {
               <th>Aksi</th>
             </tr>
           </thead>
+
           <tbody>
             {orders.map(order => (
               <tr key={order.id}>
                 <td>{order.queue}</td>
-                <td>{order.nama} <br/> <small>{order.metode}</small></td>
+                <td>{order.nama}</td>
                 <td>
-                  {order.items?.map((item, idx) => (
-                    <div key={idx}>{item.nama} {item.varian!== 'single'? item.varian : ''} x{item.qty}</div>
+                  {order.items?.map((item, i) => (
+                    <div key={i}>
+                      {item.nama} {item.varian !== 'single' ? item.varian : ''} x{item.qty}
+                    </div>
                   ))}
                 </td>
                 <td>{toRupiah(order.total)}</td>
                 <td>{order.metode}</td>
                 <td>{order.status}</td>
                 <td>
-                  <button onClick={() => terimaPesanan(order)} className="btn-terima">Terima</button>
-                  <button onClick={() => selesaikanPesanan(order.id)} className="btn-selesai">Selesai</button>
+                  <button onClick={() => terimaPesanan(order)} className="btn-terima">
+                    Terima
+                  </button>
+                  <button onClick={() => selesaikanPesanan(order.id)} className="btn-selesai">
+                    Selesai
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <style jsx global>{`
+        body { font-family: sans-serif; background: #f8f9fa; }
+        .container { max-width: 1200px; margin: auto; padding: 20px; }
+        .header { display:flex; justify-content:space-between; margin-bottom:20px; }
+        table { width:100%; background:white; border-collapse:collapse; }
+        th,td { padding:12px; border-bottom:1px solid #ddd; }
+        .btn-terima { background:green; color:white; padding:6px 10px; }
+        .btn-selesai { background:blue; color:white; padding:6px 10px; }
+        .btn-logout { background:red; color:white; padding:8px 12px; }
+      `}</style>
     </>
   );
 }
