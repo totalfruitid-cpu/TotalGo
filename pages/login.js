@@ -1,41 +1,84 @@
-import { useState, useEffect } from "react";
-import { auth, db } from "../lib/firebase";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { useState, useEffect, useRef } from "react";
+import { auth } from "../lib/firebase";
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
 import { useRouter } from "next/router";
-import { onAuthStateChanged } from "firebase/auth";
+import Cookies from "js-cookie";
+
+const setAuthCookie = (token) => {
+  Cookies.set("authToken", token, {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    expires: 1,
+  });
+};
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const redirectRef = useRef(false);
   const router = useRouter();
 
   // =========================
-  // AUTO REDIRECT (kalau sudah login)
+  // PATCH 1: RESET REF (FAST REFRESH SAFE)
+  // =========================
+  useEffect(() => {
+    return () => {
+      redirectRef.current = false;
+    };
+  }, []);
+
+  // =========================
+  // REDIRECT HANDLER
+  // =========================
+  const redirectByRole = (role) => {
+    if (redirectRef.current) return;
+    redirectRef.current = true;
+
+    if (role === "admin") router.replace("/admin");
+    else if (role === "kasir") router.replace("/kasir");
+    else {
+      signOut(auth);
+      redirectRef.current = false;
+    }
+  };
+
+  // =========================
+  // AUTH CHECK
   // =========================
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-
       try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-
-        if (!snap.exists()) {
-          await signOut(auth);
+        if (!user) {
+          Cookies.remove("authToken");
+          setCheckingAuth(false);
           return;
         }
 
-        const role = snap.data().role;
+        // PATCH 2: FORCE REFRESH TOKEN (REALTIME ROLE)
+        const tokenResult = await user.getIdTokenResult(true);
+        const role = tokenResult.claims.role;
 
-        if (role === "admin") router.replace("/admin");
-        else if (role === "kasir") router.replace("/kasir");
-        else await signOut(auth);
+        if (!role) {
+          await signOut(auth);
+          setCheckingAuth(false);
+          return;
+        }
 
+        setAuthCookie(tokenResult.token);
+        redirectByRole(role);
       } catch (err) {
-        console.log("Auth check error:", err);
+        console.error(err);
         await signOut(auth);
+      } finally {
+        setCheckingAuth(false);
       }
     });
 
@@ -43,113 +86,144 @@ export default function Login() {
   }, [router]);
 
   // =========================
-  // HANDLE LOGIN
+  // LOGIN HANDLER
   // =========================
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
+
+    if (loading || redirectRef.current) return;
+
     setLoading(true);
+    setError("");
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
 
-      const snap = await getDoc(doc(db, "users", cred.user.uid));
+      // PATCH 2: FORCE REFRESH TOKEN
+      const tokenResult = await cred.user.getIdTokenResult(true);
+      const role = tokenResult.claims.role;
 
-      if (!snap.exists()) {
-        setError("User belum terdaftar di database");
+      if (!role) {
+        setError("Akun belum di-assign role");
         await signOut(auth);
-        setLoading(false);
         return;
       }
 
-      const role = snap.data().role;
-
-      if (role === "admin") {
-        router.replace("/admin");
-      } else if (role === "kasir") {
-        router.replace("/kasir");
-      } else {
-        setError("Role tidak valid");
-        await signOut(auth);
-      }
-
+      setAuthCookie(tokenResult.token);
+      redirectByRole(role);
     } catch (err) {
-      setError("Email atau password salah");
-    }
+      const map = {
+        "auth/invalid-credential": "Email atau password salah",
+        "auth/user-not-found": "Email tidak terdaftar",
+        "auth/wrong-password": "Password salah",
+        "auth/too-many-requests": "Terlalu banyak percobaan",
+        "auth/network-request-failed": "Koneksi bermasalah",
+        "auth/user-disabled": "Akun dinonaktifkan",
+      };
 
-    setLoading(false);
+      setError(map[err.code] || "Login gagal");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // =========================
+  // LOADING STATE
+  // =========================
+  if (checkingAuth) {
+    return (
+      <div style={styles.page}>
+        <p>Checking session...</p>
+      </div>
+    );
+  }
 
   // =========================
   // UI
   // =========================
   return (
-    <div
-      style={{
-        padding: 20,
-        background: "#000",
-        color: "#fff",
-        minHeight: "100vh",
-        fontFamily: "sans-serif"
-      }}
-    >
-      <h2>Login TotalGo</h2>
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <h2 style={styles.h2}>Login TotalGo</h2>
 
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{
-            display: "block",
-            margin: "10px 0",
-            padding: 10,
-            width: 280,
-            background: "#222",
-            border: "1px solid #333",
-            color: "#fff",
-            borderRadius: 6
-          }}
-        />
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            disabled={loading}
+            onChange={(e) => setEmail(e.target.value)}
+            style={styles.input}
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            display: "block",
-            margin: "10px 0",
-            padding: 10,
-            width: 280,
-            background: "#222",
-            border: "1px solid #333",
-            color: "#fff",
-            borderRadius: 6
-          }}
-        />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            disabled={loading}
+            onChange={(e) => setPassword(e.target.value)}
+            style={styles.input}
+          />
 
-        <button
-          disabled={loading}
-          style={{
-            padding: "10px 20px",
-            background: "#fff",
-            color: "#000",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer"
-          }}
-        >
-          {loading ? "Loading..." : "Login"}
-        </button>
+          <button
+            disabled={loading || redirectRef.current}
+            style={{
+              ...styles.btn,
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Loading..." : "Login"}
+          </button>
 
-        {error && (
-          <p style={{ color: "#ff4d4d", marginTop: 12 }}>
-            {error}
-          </p>
-        )}
-      </form>
+          {error && <p style={styles.error}>{error}</p>}
+        </form>
+      </div>
     </div>
   );
 }
+
+// =========================
+// STYLE
+// =========================
+const styles = {
+  page: {
+    padding: 20,
+    background: "#000",
+    color: "#fff",
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  container: { width: "100%", maxWidth: 320 },
+  h2: { textAlign: "center", marginBottom: 20 },
+  input: {
+    width: "100%",
+    padding: 12,
+    margin: "10px 0",
+    background: "#222",
+    border: "1px solid #333",
+    color: "#fff",
+    borderRadius: 8,
+  },
+  btn: {
+    width: "100%",
+    padding: 12,
+    background: "#fff",
+    color: "#000",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  error: {
+    color: "#ff4d4d",
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 14,
+  },
+};
