@@ -26,18 +26,13 @@ export default function Login() {
   const redirectRef = useRef(false);
   const router = useRouter();
 
-  // =========================
-  // PATCH 1: RESET REF (FAST REFRESH SAFE)
-  // =========================
+  // reset lock saat unmount (anti Fast Refresh bug)
   useEffect(() => {
     return () => {
       redirectRef.current = false;
     };
   }, []);
 
-  // =========================
-  // REDIRECT HANDLER
-  // =========================
   const redirectByRole = (role) => {
     if (redirectRef.current) return;
     redirectRef.current = true;
@@ -50,9 +45,6 @@ export default function Login() {
     }
   };
 
-  // =========================
-  // AUTH CHECK
-  // =========================
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
@@ -62,8 +54,7 @@ export default function Login() {
           return;
         }
 
-        // PATCH 2: FORCE REFRESH TOKEN (REALTIME ROLE)
-        const tokenResult = await user.getIdTokenResult(true);
+        const tokenResult = await user.getIdTokenResult();
         const role = tokenResult.claims.role;
 
         if (!role) {
@@ -74,6 +65,7 @@ export default function Login() {
 
         setAuthCookie(tokenResult.token);
         redirectByRole(role);
+
       } catch (err) {
         console.error(err);
         await signOut(auth);
@@ -85,12 +77,8 @@ export default function Login() {
     return () => unsub();
   }, [router]);
 
-  // =========================
-  // LOGIN HANDLER
-  // =========================
   const handleLogin = async (e) => {
     e.preventDefault();
-
     if (loading || redirectRef.current) return;
 
     setLoading(true);
@@ -103,8 +91,7 @@ export default function Login() {
         password
       );
 
-      // PATCH 2: FORCE REFRESH TOKEN
-      const tokenResult = await cred.user.getIdTokenResult(true);
+      const tokenResult = await cred.user.getIdTokenResult();
       const role = tokenResult.claims.role;
 
       if (!role) {
@@ -115,14 +102,16 @@ export default function Login() {
 
       setAuthCookie(tokenResult.token);
       redirectByRole(role);
+
     } catch (err) {
       const map = {
         "auth/invalid-credential": "Email atau password salah",
+        "auth/invalid-login-credentials": "Email atau password salah",
         "auth/user-not-found": "Email tidak terdaftar",
         "auth/wrong-password": "Password salah",
+        "auth/user-disabled": "Akun dinonaktifkan",
         "auth/too-many-requests": "Terlalu banyak percobaan",
         "auth/network-request-failed": "Koneksi bermasalah",
-        "auth/user-disabled": "Akun dinonaktifkan",
       };
 
       setError(map[err.code] || "Login gagal");
@@ -131,20 +120,19 @@ export default function Login() {
     }
   };
 
-  // =========================
-  // LOADING STATE
-  // =========================
   if (checkingAuth) {
     return (
       <div style={styles.page}>
-        <p>Checking session...</p>
+        <div style={styles.skeletonContainer}>
+          <div style={styles.skeletonH2}></div>
+          <div style={styles.skeletonInput}></div>
+          <div style={styles.skeletonInput}></div>
+          <div style={styles.skeletonBtn}></div>
+        </div>
       </div>
     );
   }
 
-  // =========================
-  // UI
-  // =========================
   return (
     <div style={styles.page}>
       <div style={styles.container}>
@@ -158,6 +146,7 @@ export default function Login() {
             disabled={loading}
             onChange={(e) => setEmail(e.target.value)}
             style={styles.input}
+            required
           />
 
           <input
@@ -167,6 +156,7 @@ export default function Login() {
             disabled={loading}
             onChange={(e) => setPassword(e.target.value)}
             style={styles.input}
+            required
           />
 
           <button
@@ -186,9 +176,7 @@ export default function Login() {
   );
 }
 
-// =========================
-// STYLE
-// =========================
+// ================= STYLE =================
 const styles = {
   page: {
     padding: 20,
@@ -201,6 +189,7 @@ const styles = {
   },
   container: { width: "100%", maxWidth: 320 },
   h2: { textAlign: "center", marginBottom: 20 },
+
   input: {
     width: "100%",
     padding: 12,
@@ -209,7 +198,9 @@ const styles = {
     border: "1px solid #333",
     color: "#fff",
     borderRadius: 8,
+    boxSizing: "border-box",
   },
+
   btn: {
     width: "100%",
     padding: 12,
@@ -219,11 +210,42 @@ const styles = {
     borderRadius: 8,
     fontWeight: "bold",
     cursor: "pointer",
+    marginTop: 8,
   },
+
   error: {
     color: "#ff4d4d",
     marginTop: 12,
     textAlign: "center",
     fontSize: 14,
+  },
+
+  skeletonContainer: {
+    width: "100%",
+    maxWidth: 320,
+  },
+
+  skeletonH2: {
+    height: 28,
+    width: "60%",
+    background: "#222",
+    borderRadius: 8,
+    margin: "0 auto 20px",
+  },
+
+  skeletonInput: {
+    height: 44,
+    width: "100%",
+    background: "#222",
+    borderRadius: 8,
+    margin: "10px 0",
+  },
+
+  skeletonBtn: {
+    height: 44,
+    width: "100%",
+    background: "#333",
+    borderRadius: 8,
+    marginTop: 8,
   },
 };
