@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { useRouter } from 'next/router'
 import { auth, db } from "../lib/firebase"
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth"
+import { onAuthStateChanged, signOut } from "firebase/auth"
 import {
   collection,
   getDocs,
@@ -13,14 +12,12 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  where
+  getDoc
 } from "firebase/firestore"
 
 const BASE_URL_GAMBAR = "/menu/";
 
 export default function Admin() {
-  const router = useRouter()
-
   const [session, setSession] = useState(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -33,11 +30,6 @@ export default function Admin() {
     deskripsi: '', gambar_url: ''
   })
 
-  const [login, setLogin] = useState({
-    email: 'totalfruit.id@gmail.com',
-    password: ''
-  })
-
   // =========================
   // 🔐 SECURITY CHECK ADMIN
   // =========================
@@ -45,28 +37,24 @@ export default function Admin() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setLoading(false)
+        window.location.href = '/login'
         return
       }
 
       try {
-        const q = query(
-          collection(db, "users"),
-          where("email", "==", user.email)
-        )
+        const snap = await getDoc(doc(db, "users", user.uid))
 
-        const snap = await getDocs(q)
-
-        if (snap.empty) {
+        if (!snap.exists()) {
           await signOut(auth)
-          router.push('/login')
+          window.location.href = '/login'
           return
         }
 
-        const data = snap.docs[0].data()
+        const data = snap.data()
 
-        if (data.role !== "admin") {
+        if (data.role!== "admin") {
           await signOut(auth)
-          router.push('/login')
+          window.location.href = '/login'
           return
         }
 
@@ -75,7 +63,8 @@ export default function Admin() {
 
       } catch (err) {
         console.error(err)
-        router.push('/login')
+        await signOut(auth)
+        window.location.href = '/login'
       }
 
       setLoading(false)
@@ -84,24 +73,9 @@ export default function Admin() {
     return () => unsub()
   }, [])
 
-  // =========================
-  // LOGIN
-  // =========================
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setError('')
-    try {
-      await signInWithEmailAndPassword(auth, login.email, login.password)
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
   const handleLogout = async () => {
     await signOut(auth)
-    setSession(null)
-    setProducts([])
-    router.push('/login')
+    window.location.href = '/login'
   }
 
   // =========================
@@ -114,7 +88,7 @@ export default function Admin() {
     )
 
     const snap = await getDocs(q)
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
     setProducts(data)
   }
 
@@ -125,7 +99,7 @@ export default function Admin() {
     e.preventDefault()
 
     const linkLengkap = form.gambar_url
-      ? BASE_URL_GAMBAR + form.gambar_url
+     ? BASE_URL_GAMBAR + form.gambar_url
       : null
 
     const payload = {
@@ -194,7 +168,7 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  if (loading) return <p>Loading...</p>
+  if (loading) return <p style={{padding:20, background:'#000', color:'#fff', minHeight:'100vh'}}>Loading...</p>
 
   return (
     <>
@@ -202,72 +176,103 @@ export default function Admin() {
         <title>TotalGo Admin</title>
       </Head>
 
-      <div className="wrap">
+      <div style={{padding:20, background:'#000', color:'#fff', minHeight:'100vh', fontFamily:'sans-serif'}}>
 
-        {!session ? (
-          <div className="card">
-            <h2>Login Admin</h2>
-            <form onSubmit={handleLogin}>
-              <input
-                type="email"
-                placeholder="Email"
-                value={login.email}
-                onChange={e => setLogin({ ...login, email: e.target.value })}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                onChange={e => setLogin({ ...login, password: e.target.value })}
-              />
-              <button>Login</button>
-              {error && <p>{error}</p>}
-            </form>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+          <h1>Admin Dashboard TotalGo</h1>
+          <div>
+            <span style={{marginRight:16}}>{session?.email}</span>
+            <button onClick={handleLogout} style={{padding:'8px 16px', background:'#333', color:'#fff', border:'none', borderRadius:6}}>Logout</button>
           </div>
-        ) : (
-          <>
-            <div className="header">
-              <h1>Admin Dashboard</h1>
-              <button onClick={handleLogout}>Logout</button>
+        </div>
+
+        <div style={{background:'#111', padding:20, borderRadius:12, marginBottom:20}}>
+          <h2>Tambah/Edit Produk</h2>
+
+          <form onSubmit={saveProduct}>
+            <input
+              placeholder="Nama Produk"
+              value={form.nama}
+              onChange={e => setForm({...form, nama: e.target.value })}
+              style={inputStyle}
+            />
+
+            <label style={{display:'flex', alignItems:'center', margin:'10px 0'}}>
+              <input
+                type="checkbox"
+                checked={form.punya_varian}
+                onChange={e => setForm({...form, punya_varian: e.target.checked })}
+                style={{marginRight:8}}
+              />
+              Punya Varian Lite/Healthy/Sultan
+            </label>
+
+            {form.punya_varian? (
+              <>
+                <input placeholder="Harga Lite" type="number" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value })} style={inputStyle} />
+                <input placeholder="Harga Healthy" type="number" value={form.harga_healthy} onChange={e => setForm({...form, harga_healthy: e.target.value })} style={inputStyle} />
+                <input placeholder="Harga Sultan" type="number" value={form.harga_sultan} onChange={e => setForm({...form, harga_sultan: e.target.value })} style={inputStyle} />
+                <input placeholder="Stok Lite" type="number" value={form.stok_lite} onChange={e => setForm({...form, stok_lite: e.target.value })} style={inputStyle} />
+                <input placeholder="Stok Healthy" type="number" value={form.stok_healthy} onChange={e => setForm({...form, stok_healthy: e.target.value })} style={inputStyle} />
+                <input placeholder="Stok Sultan" type="number" value={form.stok_sultan} onChange={e => setForm({...form, stok_sultan: e.target.value })} style={inputStyle} />
+              </>
+            ) : (
+              <>
+                <input placeholder="Harga" type="number" value={form.harga_lite} onChange={e => setForm({...form, harga_lite: e.target.value })} style={inputStyle} />
+                <input placeholder="Stok" type="number" value={form.stok} onChange={e => setForm({...form, stok: e.target.value })} style={inputStyle} />
+              </>
+            )}
+
+            <textarea
+              placeholder="Deskripsi"
+              value={form.deskripsi}
+              onChange={e => setForm({...form, deskripsi: e.target.value })}
+              style={{...inputStyle, height:80}}
+            />
+
+            <input
+              placeholder="Nama file gambar: contoh.jpg"
+              value={form.gambar_url}
+              onChange={e => setForm({...form, gambar_url: e.target.value })}
+              style={inputStyle}
+            />
+
+            <button style={{padding:'10px 20px', background:'#fff', color:'#000', border:'none', borderRadius:6, marginTop:10}}>
+              {form.id? 'Update' : 'Simpan'} Produk
+            </button>
+            {form.id && <button type="button" onClick={resetForm} style={{padding:'10px 20px', background:'#333', color:'#fff', border:'none', borderRadius:6, marginLeft:10}}>Batal</button>}
+          </form>
+        </div>
+
+        <div style={{background:'#111', padding:20, borderRadius:12}}>
+          <h2>List Produk</h2>
+          {products.map(p => (
+            <div key={p.id} style={{borderBottom:'1px solid #333', padding:'12px 0', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+              <div>
+                <b>{p.nama}</b>
+                <p style={{margin:'4px 0 0 0', fontSize:12, color:'#aaa'}}>
+                  {p.punya_varian
+                    ? `Lite: ${p.harga_lite} | Healthy: ${p.harga_healthy} | Sultan: ${p.harga_sultan}`
+                    : `Harga: ${p.harga_lite} | Stok: ${p.stok}`
+                  }
+                </p>
+              </div>
+              <div>
+                <button onClick={() => editProduct(p)} style={{marginRight:8, padding:'6px 12px', background:'#333', color:'#fff', border:'none', borderRadius:6}}>Edit</button>
+                <button onClick={() => deleteProduct(p.id)} style={{padding:'6px 12px', background:'#8B0000', color:'#fff', border:'none', borderRadius:6}}>Hapus</button>
+              </div>
             </div>
-
-            <div className="card">
-              <h2>Produk</h2>
-
-              <form onSubmit={saveProduct}>
-                <input
-                  placeholder="Nama"
-                  value={form.nama}
-                  onChange={e => setForm({ ...form, nama: e.target.value })}
-                />
-
-                <textarea
-                  placeholder="Deskripsi"
-                  value={form.deskripsi}
-                  onChange={e => setForm({ ...form, deskripsi: e.target.value })}
-                />
-
-                <input
-                  placeholder="Gambar"
-                  value={form.gambar_url}
-                  onChange={e => setForm({ ...form, gambar_url: e.target.value })}
-                />
-
-                <button>Simpan</button>
-              </form>
-            </div>
-
-            <div className="card">
-              {products.map(p => (
-                <div key={p.id}>
-                  <b>{p.nama}</b>
-                  <button onClick={() => editProduct(p)}>Edit</button>
-                  <button onClick={() => deleteProduct(p.id)}>Hapus</button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+          ))}
+        </div>
       </div>
     </>
   )
 }
+
+const inputStyle = {
+  display:'block',
+  margin:'10px 0',
+  padding:10,
+  width:'100%',
+  background:'#222',
+  border:'1px solid #333
