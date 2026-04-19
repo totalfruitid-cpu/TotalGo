@@ -1,327 +1,367 @@
-import { useState, useEffect } from "react"
-import { db } from "../lib/firebase"
+import { useState, useEffect } from "react";
+import Head from "next/head";
+import { auth, db } from "../lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   collection,
   getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   doc,
-  getDoc,
-  runTransaction,
-  serverTimestamp
-} from "firebase/firestore"
+  serverTimestamp,
+  getDoc
+} from "firebase/firestore";
 
-import Head from "next/head"
+const BASE_URL_GAMBAR = "/menu/";
+const PLACEHOLDER_IMG = "/placeholder.png";
 
-export default function Home() {
-  const [menu, setMenu] = useState([])
-  const [cart, setCart] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export default function Admin() {
+  const [session, setSession] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // ======================
-  // LOAD MENU
-  // ======================
+  const [form, setForm] = useState({
+    id: '',
+    nama: '',
+    punya_varian: true,
+    harga_lite: '',
+    harga_healthy: '',
+    harga_sultan: '',
+    stok: '',
+    stok_lite: '',
+    stok_healthy: '',
+    stok_sultan: '',
+    deskripsi: '',
+    gambar_url: ''
+  });
+
+  // =====================
+  // AUTH CHECK
+  // =====================
   useEffect(() => {
-    const fetchMenu = async () => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return window.location.href = '/login';
+
       try {
-        const snap = await getDocs(collection(db, "products"))
-        setMenu(snap.docs.map(d => ({
-          id: d.id,
-          ...d.data()
-        })))
-      } catch (e) {
-        console.error("Gagal load menu:", e)
-        alert("Gagal load menu. Coba refresh.")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchMenu()
-  }, [])
+        const snap = await getDoc(doc(db, "users", user.uid));
 
-  // ======================
-  // CART LOGIC
-  // ======================
-  const addToCart = (item) => {
-    if (item.stok <= 0) return alert("Stok habis")
-
-    setCart(prev => {
-      const exist = prev.find(i => i.id === item.id)
-
-      if (exist) {
-        if (exist.qty >= item.stok) {
-          alert("Stok tidak cukup")
-          return prev
+        if (!snap.exists() || snap.data().role !== "admin") {
+          await signOut(auth);
+          return window.location.href = '/login';
         }
 
-        return prev.map(i =>
-          i.id === item.id
-            ? { ...i, qty: i.qty + 1 }
-            : i
-        )
+        setSession(user);
+        await loadProducts();
+      } catch (err) {
+        console.error(err);
+        await signOut(auth);
+        window.location.href = '/login';
       }
 
-      return [...prev, { ...item, qty: 1 }]
-    })
-  }
+      setLoading(false);
+    });
 
-  const removeItem = (id) => {
-    setCart(prev => prev.filter(i => i.id !== id))
-  }
+    return () => unsub();
+  }, []);
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.harga * item.qty,
-    0
-  )
+  const handleLogout = async () => {
+    await signOut(auth);
+    window.location.href = '/login';
+  };
 
-  // ======================
-  // ANTI DOUBLE CLICK
-  // ======================
-  const antiDouble = () => {
-    const last = localStorage.getItem("last_order_time")
-    const now = Date.now()
+  // =====================
+  // LOAD PRODUCTS
+  // =====================
+  const loadProducts = async () => {
+    const snap = await getDocs(collection(db, "products"));
 
-    if (last && now - last < 3000) {
-      alert("Tunggu sebentar...")
-      return false
+    const data = snap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    }));
+
+    data.sort((a, b) =>
+      (b.created_at?.toMillis?.() || 0) -
+      (a.created_at?.toMillis?.() || 0)
+    );
+
+    setProducts(data);
+  };
+
+  // =====================
+  // IMAGE FIX
+  // =====================
+  const getImageUrl = (img) => {
+    if (!img) return PLACEHOLDER_IMG;
+    if (img.startsWith("http")) return img;
+    return BASE_URL_GAMBAR + img;
+  };
+
+  // =====================
+  // SAVE
+  // =====================
+  const saveProduct = async (e) => {
+    e.preventDefault();
+
+    if (!form.nama.trim()) {
+      alert("Nama produk wajib diisi");
+      return;
     }
 
-    localStorage.setItem("last_order_time", now)
-    return true
-  }
-
-  // ======================
-  // CHECKOUT ATOMIC (SAFE TRANSACTION)
-  // ======================
-  const submitOrder = async () => {
-    if (cart.length === 0) return alert("Cart kosong")
-    if (!antiDouble()) return
-    if (isSubmitting) return
-
-    setIsSubmitting(true)
-
-    let nomor_antrian_final = 0
+    setSaving(true);
 
     try {
-      await runTransaction(db, async (transaction) => {
+      const payload = {
+        nama: form.nama.trim(),
+        punya_varian: form.punya_varian,
+        deskripsi: form.deskripsi,
+        gambar_url: form.gambar_url?.trim() || ""
+      };
 
-        // ======================
-        // 1. VALIDATE STOCK
-        // ======================
-        const productRefs = cart.map(item =>
-          doc(db, "products", item.id)
-        )
+      const toNum = (v) =>
+        v === "" || v == null ? null : Number(v);
 
-        const productSnaps = await Promise.all(
-          productRefs.map(ref => transaction.get(ref))
-        )
+      if (form.punya_varian) {
+        payload.harga_lite = toNum(form.harga_lite);
+        payload.harga_healthy = toNum(form.harga_healthy);
+        payload.harga_sultan = toNum(form.harga_sultan);
+        payload.stok_lite = toNum(form.stok_lite);
+        payload.stok_healthy = toNum(form.stok_healthy);
+        payload.stok_sultan = toNum(form.stok_sultan);
+      } else {
+        payload.harga_lite = toNum(form.harga_lite);
+        payload.stok = toNum(form.stok);
+      }
 
-        for (let i = 0; i < cart.length; i++) {
-          const snap = productSnaps[i]
-          const item = cart[i]
+      if (form.id) {
+        await updateDoc(doc(db, "products", form.id), payload);
+      } else {
+        payload.created_at = serverTimestamp();
+        await addDoc(collection(db, "products"), payload);
+      }
 
-          if (!snap.exists()) {
-            throw new Error(`Produk ${item.nama} tidak ditemukan`)
-          }
-
-          if (snap.data().stok < item.qty) {
-            throw new Error(`Stok ${item.nama} tidak cukup`)
-          }
-        }
-
-        // ======================
-        // 2. QUEUE NUMBER (ATOMIC)
-        // ======================
-        const queueRef = doc(db, "meta", "queue")
-        const queueSnap = await transaction.get(queueRef)
-
-        const today = new Date().toISOString().split("T")[0]
-
-        if (!queueSnap.exists() || queueSnap.data().date !== today) {
-          nomor_antrian_final = 1
-          transaction.set(queueRef, {
-            date: today,
-            last_number: 1
-          })
-        } else {
-          nomor_antrian_final = queueSnap.data().last_number + 1
-          transaction.update(queueRef, {
-            last_number: nomor_antrian_final
-          })
-        }
-
-        // ======================
-        // 3. REDUCE STOCK
-        // ======================
-        productSnaps.forEach((snap, i) => {
-          const currentStock = snap.data().stok
-          const qty = cart[i].qty
-
-          transaction.update(snap.ref, {
-            stok: currentStock - qty
-          })
-        })
-
-        // ======================
-        // 4. CREATE ORDER
-        // ======================
-        const orderRef = doc(collection(db, "orders"))
-
-        transaction.set(orderRef, {
-          nomor_antrian: nomor_antrian_final,
-          items: cart,
-          total,
-          status: "pending",
-          created_at: serverTimestamp(),
-          no_meja: "-",
-          nama_customer: "Walk-in"
-        })
-      })
-
-      alert(`Order sukses! No Antrian: ${nomor_antrian_final}`)
-      setCart([])
-
-      // refresh menu
-      const snap = await getDocs(collection(db, "products"))
-      setMenu(snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      })))
-
-    } catch (e) {
-      console.error("ORDER ERROR:", e)
-      alert(e.message.includes("Stok")
-        ? e.message
-        : "Gagal order. Coba lagi."
-      )
+      resetForm();
+      await loadProducts();
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    setIsSubmitting(false)
-  }
+  const resetForm = () => {
+    setForm({
+      id: '',
+      nama: '',
+      punya_varian: true,
+      harga_lite: '',
+      harga_healthy: '',
+      harga_sultan: '',
+      stok: '',
+      stok_lite: '',
+      stok_healthy: '',
+      stok_sultan: '',
+      deskripsi: '',
+      gambar_url: ''
+    });
+  };
 
-  // ======================
-  // UI
-  // ======================
-  if (loading) return <div style={styles.loading}>Loading menu...</div>
+  const deleteProduct = async (id) => {
+    if (!confirm("Hapus produk?")) return;
+    await deleteDoc(doc(db, "products", id));
+    loadProducts();
+  };
+
+  const editProduct = (p) => {
+    setForm({
+      id: p.id,
+      nama: p.nama || '',
+      punya_varian: p.punya_varian === true || p.punya_varian === "true",
+      harga_lite: p.harga_lite ?? '',
+      harga_healthy: p.harga_healthy ?? '',
+      harga_sultan: p.harga_sultan ?? '',
+      stok: p.stok ?? '',
+      stok_lite: p.stok_lite ?? '',
+      stok_healthy: p.stok_healthy ?? '',
+      stok_sultan: p.stok_sultan ?? '',
+      deskripsi: p.deskripsi || '',
+      gambar_url: (p.gambar_url || '').replace(BASE_URL_GAMBAR, '')
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  if (loading) return <div style={styles.loading}>Loading...</div>;
 
   return (
     <>
       <Head>
-        <title>TotalGo - Fast.Fresh.Prime</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Admin TotalGo</title>
       </Head>
 
       <div style={styles.page}>
-        <h2 style={styles.title}>Menu TotalGo 🚀</h2>
+        <div style={styles.container}>
 
-        {/* MENU */}
-        <div style={styles.menuGrid}>
-          {menu.map(item => (
-            <div key={item.id} style={styles.card(item.stok === 0)}>
-              <b>{item.nama}</b>
-              <div>Rp{item.harga?.toLocaleString("id-ID")}</div>
-              <div>Stok: {item.stok}</div>
-
-              <button
-                onClick={() => addToCart(item)}
-                disabled={item.stok === 0}
-                style={styles.btn(item.stok === 0)}
-              >
-                {item.stok === 0 ? "Habis" : "+ Add"}
-              </button>
+          <header style={styles.header}>
+            <div>
+              <h1 style={styles.h1}>Admin TotalGo</h1>
+              <p style={styles.email}>{session?.email}</p>
             </div>
-          ))}
-        </div>
+            <button onClick={handleLogout} style={styles.btnLogout}>
+              Logout
+            </button>
+          </header>
 
-        {/* CART */}
-        <h2 style={styles.title}>Keranjang</h2>
+          {/* FORM */}
+          <div style={styles.card}>
+            <h2 style={styles.h2}>{form.id ? "Edit Produk" : "Tambah Produk"}</h2>
 
-        {cart.length === 0 ? (
-          <p style={{ opacity: 0.6, textAlign: "center" }}>
-            Keranjang kosong
-          </p>
-        ) : (
-          <>
-            {cart.map(item => (
-              <div key={item.id} style={styles.cartItem}>
-                <span>{item.nama} x{item.qty}</span>
-                <div>
-                  Rp{(item.harga * item.qty).toLocaleString("id-ID")}
-                  <button onClick={() => removeItem(item.id)} style={styles.del}>x</button>
+            <form onSubmit={saveProduct}>
+              <input
+                placeholder="Nama Produk"
+                value={form.nama}
+                onChange={e => setForm({ ...form, nama: e.target.value })}
+                style={styles.input}
+              />
+
+              <label style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={form.punya_varian}
+                  onChange={e => setForm({ ...form, punya_varian: e.target.checked })}
+                />
+                Punya Varian
+              </label>
+
+              <input
+                placeholder="Harga Lite"
+                value={form.harga_lite}
+                onChange={e => setForm({ ...form, harga_lite: e.target.value })}
+                style={styles.input}
+              />
+
+              <input
+                placeholder="Harga Healthy"
+                value={form.harga_healthy}
+                onChange={e => setForm({ ...form, harga_healthy: e.target.value })}
+                style={styles.input}
+              />
+
+              <input
+                placeholder="Harga Sultan"
+                value={form.harga_sultan}
+                onChange={e => setForm({ ...form, harga_sultan: e.target.value })}
+                style={styles.input}
+              />
+
+              <input
+                placeholder="Gambar (menu-avovado.png)"
+                value={form.gambar_url}
+                onChange={e => setForm({ ...form, gambar_url: e.target.value })}
+                style={styles.input}
+              />
+
+              <button disabled={saving} style={styles.btnPrimary}>
+                {saving ? "Menyimpan..." : "Simpan"}
+              </button>
+            </form>
+          </div>
+
+          {/* LIST */}
+          <div style={styles.card}>
+            <h2 style={styles.h2}>List Produk</h2>
+
+            {products.map(p => (
+              <div key={p.id} style={styles.productItem}>
+
+                <div style={{ display: "flex", gap: 12 }}>
+                  <img
+                    src={getImageUrl(p.gambar_url)}
+                    style={styles.img}
+                  />
+
+                  <div>
+                    <b>{p.nama}</b>
+
+                    {p.punya_varian ? (
+                      <div>
+                        <div>Lite: Rp {p.harga_lite ?? 0}</div>
+                        <div>Healthy: Rp {p.harga_healthy ?? 0}</div>
+                        <div>Sultan: Rp {p.harga_sultan ?? 0}</div>
+                      </div>
+                    ) : (
+                      <div>Harga: Rp {p.harga_lite ?? 0}</div>
+                    )}
+                  </div>
                 </div>
+
+                <div>
+                  <button onClick={() => editProduct(p)}>Edit</button>
+                  <button onClick={() => deleteProduct(p.id)}>Hapus</button>
+                </div>
+
               </div>
             ))}
+          </div>
 
-            <h3 style={styles.total}>
-              Total: Rp{total.toLocaleString("id-ID")}
-            </h3>
-          </>
-        )}
-
-        {/* CHECKOUT */}
-        <button
-          onClick={submitOrder}
-          disabled={isSubmitting || cart.length === 0}
-          style={styles.checkout(isSubmitting || cart.length === 0)}
-        >
-          {isSubmitting ? "Memproses..." : "Checkout"}
-        </button>
+        </div>
       </div>
     </>
-  )
+  );
 }
 
-// ======================
-// STYLES
-// ======================
+// =====================
 const styles = {
-  loading: { padding: 20 },
-  page: { maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" },
-  title: { marginTop: 20, fontSize: 20 },
-  menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-
-  card: (disabled) => ({
-    padding: 10,
-    border: "1px solid #ddd",
-    borderRadius: 10,
-    opacity: disabled ? 0.5 : 1
-  }),
-
-  btn: (disabled) => ({
-    width: "100%",
-    marginTop: 5,
-    padding: 8,
-    background: disabled ? "#ccc" : "#000",
+  page: {
+    background: "#0a0a0a",
     color: "#fff",
-    border: "none",
+    minHeight: "100vh"
+  },
+  container: { maxWidth: 480, margin: "0 auto", padding: 16 },
+  card: {
+    background: "#121212",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    border: "1px solid #222"
+  },
+  input: {
+    width: "100%",
+    padding: 10,
+    marginBottom: 10,
+    background: "#222",
+    color: "#fff",
+    border: "1px solid #333",
     borderRadius: 8
-  }),
-
-  cartItem: {
+  },
+  btnPrimary: {
+    width: "100%",
+    padding: 10,
+    background: "#fff",
+    color: "#000",
+    borderRadius: 8,
+    border: "none",
+    fontWeight: "bold"
+  },
+  img: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    objectFit: "cover"
+  },
+  productItem: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "8px 0"
+    padding: "10px 0",
+    borderBottom: "1px solid #222"
   },
-
-  del: {
-    marginLeft: 10,
-    border: "none",
-    background: "#eee",
-    borderRadius: 5,
-    cursor: "pointer"
-  },
-
-  total: {
-    textAlign: "right",
-    marginTop: 10
-  },
-
-  checkout: (disabled) => ({
-    width: "100%",
-    padding: 14,
-    marginTop: 15,
-    background: disabled ? "#ccc" : "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10
-  })
-}
+  h2: { marginBottom: 10 },
+  header: { display: "flex", justifyContent: "space-between" },
+  btnLogout: { background: "#222", color: "#fff", border: "none", padding: 8 },
+  email: { fontSize: 12, color: "#888" },
+  h1: { fontSize: 20 },
+  loading: { padding: 20 }
+};
