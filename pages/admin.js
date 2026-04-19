@@ -275,4 +275,4 @@ const inputStyle = {
   padding:10,
   width:'100%',
   background:'#222',
-  border:'1px solid #333'
+  border:'1px solid #333'}
