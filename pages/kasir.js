@@ -1,287 +1,298 @@
-import { useState, useEffect } from 'react'
-import Head from 'next/head'
+"use client"
+import { useEffect, useState, useRef } from "react"
 import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import {
   collection,
-  getDocs,
-  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
   updateDoc,
   doc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  getDoc
+  getDoc,
+  increment
 } from "firebase/firestore"
-
-const BASE_URL_GAMBAR = "/menu/";
 
 export default function Kasir() {
   const [session, setSession] = useState(null)
-  const [products, setProducts] = useState([])
-  const [cart, setCart] = useState([])
+  const [orders, setOrders] = useState([])
+  const [filter, setFilter] = useState("pending")
   const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
 
-  // =========================
-  // 🔐 SECURITY CHECK KASIR
-  // =========================
+  const prevPendingCount = useRef(0)
+  const unsubOrdersRef = useRef(null)
+
+  const playSound = () => {
+    const audio = new Audio("/ding.mp3")
+    audio.play().catch(() => {})
+  }
+
+  // ======================
+  // AUTH
+  // ======================
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setLoading(false)
-        window.location.href = '/login'
+        window.location.href = "/login"
         return
       }
 
       try {
         const snap = await getDoc(doc(db, "users", user.uid))
 
-        if (!snap.exists()) {
+        if (!snap.exists() || snap.data().role !== "kasir") {
           await signOut(auth)
-          window.location.href = '/login'
-          return
-        }
-
-        const data = snap.data()
-
-        if (data.role!== "kasir" && data.role!== "admin") {
-          await signOut(auth)
-          window.location.href = '/login'
+          window.location.href = "/login"
           return
         }
 
         setSession(user)
-        loadProducts()
-
       } catch (err) {
         console.error(err)
-        window.location.href = '/login'
+        window.location.href = "/login"
+      }
+    })
+
+    return () => unsubAuth()
+  }, [])
+
+  // ======================
+  // ORDERS REALTIME
+  // ======================
+  useEffect(() => {
+    if (!session?.uid) return
+
+    setLoading(true)
+
+    const q = query(
+      collection(db, "orders"),
+      orderBy("created_at", "desc")
+    )
+
+    if (unsubOrdersRef.current) {
+      unsubOrdersRef.current()
+      unsubOrdersRef.current = null
+    }
+
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }))
+
+      const pendingCount = data.filter(o =>
+        !o.status || o.status === "pending"
+      ).length
+
+      if (pendingCount > prevPendingCount.current) {
+        playSound()
+        if (navigator.vibrate) navigator.vibrate(200)
       }
 
+      prevPendingCount.current = pendingCount
+      setOrders(data)
       setLoading(false)
     })
 
-    return () => unsub()
+    unsubOrdersRef.current = unsub
+
+    return () => {
+      if (unsubOrdersRef.current) {
+        unsubOrdersRef.current()
+        unsubOrdersRef.current = null
+      }
+    }
+  }, [session])
+
+  // ======================
+  // CLEANUP EXTRA (ANTI BUG MOBILE)
+  // ======================
+  useEffect(() => {
+    return () => {
+      if (unsubOrdersRef.current) {
+        unsubOrdersRef.current()
+        unsubOrdersRef.current = null
+      }
+    }
   }, [])
 
-  // =========================
-  // LOAD PRODUCTS
-  // =========================
-  const loadProducts = async () => {
-    const q = query(
-      collection(db, 'products'),
-      orderBy('nama', 'asc')
-    )
-
-    const snap = await getDocs(q)
-    const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
-    setProducts(data)
-  }
-
-  // =========================
-  // CART LOGIC
-  // =========================
-  const addToCart = (product, varian = null) => {
-    const harga = varian === 'lite'? product.harga_lite
-                : varian === 'healthy'? product.harga_healthy
-                : varian === 'sultan'? product.harga_sultan
-                : product.harga_lite || 0
-
-    const namaItem = varian? `${product.nama} - ${varian}` : product.nama
-
-    const exist = cart.find(item => item.id === product.id && item.varian === varian)
-
-    if (exist) {
-      setCart(cart.map(item =>
-        item.id === product.id && item.varian === varian
-        ? {...item, qty: item.qty + 1 }
-          : item
-      ))
-    } else {
-      setCart([...cart, {
-        id: product.id,
-        nama: namaItem,
-        varian: varian,
-        harga: harga,
-        qty: 1
-      }])
-    }
-  }
-
-  const updateQty = (id, varian, qty) => {
-    if (qty <= 0) {
-      setCart(cart.filter(item =>!(item.id === id && item.varian === varian)))
-    } else {
-      setCart(cart.map(item =>
-        item.id === id && item.varian === varian
-        ? {...item, qty: qty }
-          : item
-      ))
-    }
-  }
-
-  const removeFromCart = (id, varian) => {
-    setCart(cart.filter(item =>!(item.id === id && item.varian === varian)))
-  }
-
-  // Hitung total otomatis
-  useEffect(() => {
-    const sum = cart.reduce((acc, item) => acc + (item.harga * item.qty), 0)
-    setTotal(sum)
-  }, [cart])
-
-  // =========================
-  // CHECKOUT
-  // =========================
-  const checkout = async () => {
-    if (cart.length === 0) {
-      alert('Keranjang kosong')
-      return
-    }
-
+  // ======================
+  // MARK DONE
+  // ======================
+  const markDone = async (order) => {
     try {
-      // 1. Simpan transaksi
-      await addDoc(collection(db, 'transaksi'), {
-        items: cart,
-        total: total,
-        kasir_email: session.email,
-        created_at: serverTimestamp()
+      if (!order?.id) return
+
+      await updateDoc(doc(db, "orders", order.id), {
+        status: "done",
+        kasir_email: session?.email || ""
       })
 
-      // 2. Kurangi stok
-      for (const item of cart) {
-        const productRef = doc(db, 'products', item.id)
-        const productSnap = await getDoc(productRef)
-        const productData = productSnap.data()
+      const items = order.items || []
 
-        if (item.varian) {
-          const fieldStok = `stok_${item.varian}`
-          const stokBaru = (productData[fieldStok] || 0) - item.qty
-          await updateDoc(productRef, { [fieldStok]: stokBaru < 0? 0 : stokBaru })
-        } else {
-          const stokBaru = (productData.stok || 0) - item.qty
-          await updateDoc(productRef, { stok: stokBaru < 0? 0 : stokBaru })
-        }
-      }
+      await Promise.all(
+        items.map((item) => {
+          if (!item?.id) return
 
-      alert(`Transaksi berhasil! Total: Rp${total.toLocaleString('id-ID')}`)
-      setCart([])
-      loadProducts()
+          const field =
+            item.varian === "Lite" ? "stok_lite" :
+            item.varian === "Healthy" ? "stok_healthy" :
+            item.varian === "Sultan" ? "stok_sultan" : "stok"
+
+          return updateDoc(doc(db, "products", item.id), {
+            [field]: increment(-item.qty || 0)
+          })
+        })
+      )
 
     } catch (err) {
-      alert('Gagal checkout: ' + err.message)
+      console.error(err)
+      alert("Gagal update order")
     }
   }
 
   const handleLogout = async () => {
     await signOut(auth)
-    window.location.href = '/login'
+    window.location.href = "/login"
   }
 
-  if (loading) return <p style={{padding:20, background:'#000', color:'#fff', minHeight:'100vh'}}>Loading...</p>
+  // ======================
+  // FILTER (CLIENT SIDE)
+  // ======================
+  const filteredOrders = orders.filter(order => {
+    if (filter === "all") return true
+    if (filter === "done") return order.status === "done"
+    return !order.status || order.status === "pending"
+  })
 
+  if (loading) {
+    return <div style={styles.page}>Loading...</div>
+  }
+
+  // ======================
+  // UI
+  // ======================
   return (
-    <>
-      <Head>
-        <title>TotalGo Kasir</title>
-      </Head>
+    <div style={styles.page}>
+      <div style={styles.row}>
+        <h2 style={styles.title}>🔥 KASIR LIVE</h2>
+        <button onClick={handleLogout} style={styles.smallBtn}>
+          Logout
+        </button>
+      </div>
 
-      <div style={{padding:20, background:'#000', color:'#fff', minHeight:'100vh', fontFamily:'sans-serif'}}>
+      <div style={styles.filterBox}>
+        <button onClick={() => setFilter("pending")} style={styles.btnFilter(filter === "pending")}>Pending</button>
+        <button onClick={() => setFilter("done")} style={styles.btnFilter(filter === "done")}>Done</button>
+        <button onClick={() => setFilter("all")} style={styles.btnFilter(filter === "all")}>All</button>
+      </div>
 
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
-          <h1>Kasir TotalGo</h1>
-          <div>
-            <span style={{marginRight:16}}>{session?.email}</span>
-            <button onClick={handleLogout} style={{padding:'8px 16px', background:'#333', color:'#fff', border:'none', borderRadius:6}}>Logout</button>
-          </div>
-        </div>
+      {filteredOrders.length === 0 ? (
+        <p style={{ opacity: 0.6, textAlign: "center", marginTop: 40 }}>
+          Tidak ada order
+        </p>
+      ) : (
+        filteredOrders.map(order => (
+          <div key={order.id} style={styles.card}>
+            <div style={styles.row}>
+              <div>
+                <b>#{order.nomor_antrian}</b>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
+                  {order.nama_customer} - Meja {order.no_meja}
+                </div>
+              </div>
+              <span style={styles.status(order.status)}>
+                {order.status || "pending"}
+              </span>
+            </div>
 
-        <div style={{display:'flex', gap:20, flexWrap:'wrap'}}>
-
-          {/* LIST PRODUK */}
-          <div style={{flex:'2', background:'#111', padding:20, borderRadius:12, minWidth:300}}>
-            <h2>Menu</h2>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:16}}>
-              {products.map(p => (
-                <div key={p.id} style={{background:'#222', padding:12, borderRadius:8}}>
-                  {p.gambar_url && <img src={p.gambar_url} alt={p.nama} style={{width:'100%', height:120, objectFit:'cover', borderRadius:6, marginBottom:8}} />}
-                  <b>{p.nama}</b>
-
-                  {p.punya_varian? (
-                    <div style={{marginTop:8}}>
-                      <button onClick={() => addToCart(p, 'lite')} style={btnStyle}>Lite: Rp{(p.harga_lite || 0).toLocaleString('id-ID')}</button>
-                      <button onClick={() => addToCart(p, 'healthy')} style={btnStyle}>Healthy: Rp{(p.harga_healthy || 0).toLocaleString('id-ID')}</button>
-                      <button onClick={() => addToCart(p, 'sultan')} style={btnStyle}>Sultan: Rp{(p.harga_sultan || 0).toLocaleString('id-ID')}</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => addToCart(p)} style={{...btnStyle, marginTop:8}}>
-                      Rp{(p.harga_lite || 0).toLocaleString('id-ID')}
-                    </button>
-                  )}
+            <div>
+              {order.items?.map((item, i) => (
+                <div key={i} style={styles.item}>
+                  <span>{item.nama} {item.varian} x{item.qty}</span>
+                  <span>
+                    Rp{(item.harga * item.qty).toLocaleString("id-ID")}
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* KERANJANG */}
-          <div style={{flex:'1', background:'#111', padding:20, borderRadius:12, minWidth:300}}>
-            <h2>Keranjang</h2>
+            <div style={{ ...styles.row, marginTop: 8 }}>
+              <b>Total</b>
+              <b>Rp{order.total?.toLocaleString("id-ID")}</b>
+            </div>
 
-            {cart.length === 0? <p>Kosong</p> : (
-              <>
-                {cart.map(item => (
-                  <div key={`${item.id}-${item.varian}`} style={{borderBottom:'1px solid #333', padding:'8px 0'}}>
-                    <div style={{display:'flex', justifyContent:'space-between'}}>
-                      <span>{item.nama}</span>
-                      <button onClick={() => removeFromCart(item.id, item.varian)} style={{background:'none', border:'none', color:'#ff4d4d', cursor:'pointer'}}>X</button>
-                    </div>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4}}>
-                      <div>
-                        <button onClick={() => updateQty(item.id, item.varian, item.qty - 1)} style={qtyBtn}>-</button>
-                        <span style={{margin:'0 8px'}}>{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, item.varian, item.qty + 1)} style={qtyBtn}>+</button>
-                      </div>
-                      <span>Rp{(item.harga * item.qty).toLocaleString('id-ID')}</span>
-                    </div>
-                  </div>
-                ))}
-
-                <div style={{marginTop:20, paddingTop:12, borderTop:'2px solid #333'}}>
-                  <h3>Total: Rp{total.toLocaleString('id-ID')}</h3>
-                  <button onClick={checkout} style={{width:'100%', padding:'12px', background:'#fff', color:'#000', border:'none', borderRadius:6, fontWeight:'bold', marginTop:8}}>
-                    Bayar
-                  </button>
-                </div>
-              </>
+            {order.status !== "done" && (
+              <button onClick={() => markDone(order)} style={styles.btn}>
+                ✔ SELESAIKAN
+              </button>
             )}
           </div>
-
-        </div>
-      </div>
-    </>
+        ))
+      )}
+    </div>
   )
 }
 
-const btnStyle = {
-  display:'block',
-  width:'100%',
-  padding:'6px',
-  margin:'4px 0',
-  background:'#333',
-  color:'#fff',
-  border:'none',
-  borderRadius:4,
-  cursor:'pointer',
-  fontSize:12
-}
-
-const qtyBtn = {
-  padding:'2px 8px',
-  background:'#333',
-  color:'#fff',
-  border:'none',
-  borderRadius:4,
-  cursor:'pointer'
+const styles = {
+  page: {
+    background: "#000",
+    color: "#fff",
+    minHeight: "100vh",
+    padding: 12,
+    fontFamily: "sans-serif",
+    maxWidth: 480,
+    margin: "0 auto"
+  },
+  title: { fontSize: 18, margin: 0 },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  filterBox: { display: "flex", gap: 8, marginBottom: 12, marginTop: 12 },
+  btnFilter: (active) => ({
+    flex: 1,
+    padding: 10,
+    borderRadius: 10,
+    border: "none",
+    background: active ? "#fff" : "#222",
+    color: active ? "#000" : "#fff",
+    fontWeight: "bold"
+  }),
+  card: {
+    background: "#111",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    border: "1px solid #222"
+  },
+  status: (s) => ({
+    fontSize: 10,
+    padding: "2px 6px",
+    borderRadius: 6,
+    background: s === "done" ? "green" : "#555"
+  }),
+  item: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: 13,
+    padding: "4px 0",
+    borderBottom: "1px solid #222"
+  },
+  btn: {
+    width: "100%",
+    marginTop: 10,
+    padding: 14,
+    background: "#fff",
+    color: "#000",
+    border: "none",
+    borderRadius: 10,
+    fontWeight: "bold",
+    fontSize: 14
+  },
+  smallBtn: {
+    padding: "8px 12px",
+    fontSize: 12,
+    background: "#333",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8
+  }
 }
