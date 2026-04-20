@@ -1,32 +1,15 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import admin from '../../../lib/firebaseAdmin'; // <-- UDAH GUE BENERIN
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-export const runtime = 'nodejs'; // WAJIB: jangan jalan di edge
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET() {
-  try {
-    const token = cookies().get('authToken')?.value;
+  const role = cookies().get('userRole')?.value
 
-    if (!token) {
-      return NextResponse.json({ error: 'No token' }, { status: 401 });
-    }
-
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    const snap = await admin
-      .firestore()
-      .doc(`users/${decoded.uid}`)
-      .get();
-
-    if (!snap.exists) {
-      return NextResponse.json({ error: 'No role doc' }, { status: 403 });
-    }
-
-    const role = snap.data().role;
-
-    return NextResponse.json({ role });
-  } catch (err) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!role) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  return NextResponse.json({ role })
 }
