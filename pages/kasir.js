@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { auth, db } from '../lib/firebase' // <-- GANTI KALO PATH LU BEDA
+import { auth, db } from '../lib/firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore'
 import { useRouter } from 'next/router'
@@ -84,32 +84,28 @@ const styles = {
     background: "linear-gradient(135deg, #fef7ff, #f0f9ff 50%, #ecfdf5)",
     backgroundAttachment: "fixed",
     color: "#1e293b",
-    minHeight: "100vh",
     minHeight: "100dvh",
     fontFamily: "'Inter', 'Segoe UI', sans-serif",
     WebkitFontSmoothing: "antialiased"
   },
-
   container: {
     width: "100%",
-    maxWidth: "100%", // <-- UDAH GAK 500 LAGI. FULL LAYAR
+    maxWidth: "100%",
     margin: "0 auto",
-    padding: 12, // <-- Padding dikecilin biar card makin lebar
+    padding: 12,
     boxSizing: "border-box",
-    minHeight: "100dvh",
+    minHeight: "100dvh"
   },
-
   loading: {
     padding: 20,
     textAlign: "center",
     color: "#475569",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     background: "linear-gradient(135deg, #fef7ff, #f0f9ff)"
   },
-
   header: {
     display: "flex",
     justifyContent: "space-between",
@@ -117,81 +113,78 @@ const styles = {
     background: "rgba(255,255,255,0.9)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    padding: "16px", // <-- GEDEIN
+    padding: "16px",
     borderRadius: 20,
     boxShadow: "0 4px 20px rgba(203, 213, 225, 0.25)",
     border: "1px solid rgba(255,255,255,1)",
     marginBottom: 16
   },
-
   h1: {
-    fontSize: 22, // <-- GEDEIN
+    fontSize: 22,
     margin: 0,
     color: "#0f172a",
     fontWeight: 700
   },
-
   email: {
-    fontSize: 12, // <-- GEDEIN DIKIT
+    fontSize: 12,
     opacity: 0.7,
     margin: "4px 0 0 0",
     color: "#64748b"
   },
-
   btnGroup: {
     display: "flex",
-    gap: 10, // <-- GEDEIN GAP
-    marginBottom: 20 // <-- GEDEIN JARAK
+    gap: 10,
+    marginBottom: 20
   },
-
-  btnPrimary: { // TOMBOL GEDE
+  btnPrimary: {
     flex: 1,
-    padding: "16px", // <-- GEDEIN DARI 12 JADI 16
+    padding: "16px",
     background: "linear-gradient(135deg, #86efac, #4ade80)",
     color: "#14532d",
     borderRadius: 16,
     border: "none",
     cursor: "pointer",
     fontWeight: 700,
-    fontSize: 16, // <-- GEDEIN FONT
+    fontSize: 16,
     boxShadow: "0 4px 14px rgba(74, 222, 128, 0.35)",
     transition: "all 0.2s ease"
   },
-
-  btnSecondary: { // TOMBOL GEDE
+  btnSecondary: {
     flex: 1,
-    padding: "16px", // <-- GEDEIN
+    padding: "16px",
     background: "linear-gradient(135deg, #bae6fd, #7dd3fc)",
     color: "#0c4a6e",
     borderRadius: 16,
     border: "none",
     cursor: "pointer",
     fontWeight: 600,
-    fontSize: 16, // <-- GEDEIN FONT
+    fontSize: 16,
     transition: "all 0.2s ease"
   },
-
   btnLogout: {
-    padding: "10px 16px", // <-- GEDEIN
+    padding: "10px 16px",
     background: "linear-gradient(135deg, #fbcfe8, #f9a8d4)",
-    color: "#831},
-
-  orderList: { display: 'flex', flexDirection: 'column', gap: 12 },
-  empty: { textAlign: 'center', opacity: 0.6, marginTop: 40, fontSize: 14, color: '#64748b' },
-
+    color: "#831843",
+    borderRadius: 14,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 14,
+    boxShadow: "0 4px 14px rgba(249, 168, 212, 0.35)"
+  },
+  orderList: { display: 'flex', flexDirection: 'column', gap: 16 },
+  empty: { textAlign: 'center', opacity: 0.6, marginTop: 40, fontSize: 16, color: '#64748b' },
   card: {
     background: "#ffffff",
-    padding: 16,
-    borderRadius: 20,
+    padding: 20,
+    borderRadius: 24,
     boxShadow: "0 4px 16px rgba(203, 213, 225, 0.25)",
     border: "1px solid #f8fafc"
   },
-
-  orderHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 16, alignItems: 'center' },
-  badge: { fontSize: 11, background: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: 20, fontWeight: 600, textTransform: 'capitalize' },
-  total: { margin: '4px 0 12px 0', fontSize: 18, fontWeight: 700, color: "#0f172a" },
-  itemList: { margin: 0, paddingLeft: 18, marginBottom: 12, opacity: 0.8, fontSize: 13, color: '#334155' },
-
+  orderHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 18, alignItems: 'center', fontWeight: 700 },
+  badge: { fontSize: 13, background: '#fef3c7', color: '#92400e', padding: '6px 14px', borderRadius: 20, fontWeight: 700, textTransform: 'capitalize' },
+  total: { margin: '8px 0 16px 0', fontSize: 22, fontWeight: 800, color: "#0f172a" },
+  itemList: { margin: 0, paddingLeft: 20, marginBottom: 16, opacity: 0.8, fontSize: 15, color: '#334155', lineHeight: 1.6 },
   input: {
     width: "100%",
     padding: "12px 14px",
@@ -203,7 +196,6 @@ const styles = {
     fontSize: 14,
     boxSizing: "border-box"
   },
-
   checkboxLabel: {
     display: "flex",
     gap: 8,
