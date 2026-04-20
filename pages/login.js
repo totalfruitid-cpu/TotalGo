@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useRouter } from "next/router" // pake next/navigation kalo app dir
+import { useRouter } from "next/router"
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth"
 import { auth } from "../lib/firebase"
 import Head from "next/head"
@@ -12,11 +12,9 @@ export default function Login() {
   const [error, setError] = useState("")
   const [checkingSession, setCheckingSession] = useState(true)
 
-  // PENGAMAN 1: Kalo udah login, tendang keluar dari halaman login
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Cek session udah valid belum
         const res = await fetch('/api/verifySession')
         if (res.ok) {
           const { role } = await res.json()
@@ -29,7 +27,6 @@ export default function Login() {
     return () => unsub()
   }, [router])
 
-  // Baca query?from=/admin buat redirect balik abis login
   const from = router.query.from || null
   const sessionError = router.query.error
 
@@ -44,7 +41,6 @@ export default function Login() {
     setLoading(true)
     setError("")
 
-    // PENGAMAN 2: Validasi basic
     if (!email.includes('@') || password.length < 6) {
       setError('Email atau password tidak valid')
       setLoading(false)
@@ -53,8 +49,6 @@ export default function Login() {
 
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password)
-
-      // PENGAMAN 3: Force refresh token biar Custom Claims terbaru kebawa
       const idToken = await userCred.user.getIdToken(true)
 
       const res = await fetch("/api/setCookie", {
@@ -66,11 +60,80 @@ export default function Login() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal membuat sesi')
 
-      // PENGAMAN 4: NO FALLBACK. Role harus jelas admin/kasir
       const roleRoutes = { admin: "/admin", kasir: "/kasir" }
       const target = roleRoutes[data.role]
 
       if (!target) {
-        await signOut(auth) // PENGAMAN 5: Logout paksa kalo role 'user'
-        await fetch('/api/logout', { method: 'POST' }) // hapus cookie
-        throw new Error("Akun ini tidak punya akses ke
+        await signOut(auth)
+        await fetch('/api/logout', { method: 'POST' })
+        throw new Error("Akun ini tidak punya akses ke sistem")
+      }
+
+      router.replace(from || target)
+
+    } catch (err) {
+      console.error(err.code)
+      if (err.code === 'auth/wrong-password') setError('Password salah')
+      else if (err.code === 'auth/user-not-found') setError('Email tidak terdaftar')
+      else if (err.code === 'auth/too-many-requests') setError('Terlalu banyak percobaan. Coba 5 menit lagi')
+      else setError(err.message || "Login gagal")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (checkingSession) return <div style={{ textAlign: 'center', marginTop: 50 }}>Loading...</div>
+
+  return (
+    <>
+      <Head><title>Login - TotalGo</title></Head>
+      <div style={{
+        minHeight: "100vh", display: "flex", alignItems: "center",
+        justifyContent: "center", fontFamily: "sans-serif", background: "#f5f5f5"
+      }}>
+        <form onSubmit={handleLogin} style={{
+          padding: 24, background: "white", borderRadius: 12,
+          width: 320, boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+        }}>
+          <h2>TotalGo Login</h2>
+
+          <input
+            placeholder="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+            required
+            disabled={loading}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+            required
+            disabled={loading}
+          />
+
+          {error && <p style={{ color: "red", fontSize: 12, marginBottom: 10 }}>{error}</p>}
+
+          <button style={btnStyle} disabled={loading}>
+            {loading? "Memproses..." : "Login"}
+          </button>
+        </form>
+      </div>
+    </>
+  )
+}
+
+const inputStyle = {
+  width: "100%", padding: 10, marginBottom: 10,
+  borderRadius: 8, border: "1px solid #ddd", boxSizing: "border-box"
+}
+
+const btnStyle = {
+  width: "100%", padding: 10, background: "#000", color: "white",
+  border: "none", borderRadius: 8, cursor: "pointer"
+}
