@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState, useRef } from "react"
+import Head from "next/head"
 import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
 import {
@@ -27,9 +28,7 @@ export default function Kasir() {
     audio.play().catch(() => {})
   }
 
-  // ======================
-  // AUTH
-  // ======================
+  // ================= AUTH =================
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -37,28 +36,21 @@ export default function Kasir() {
         return
       }
 
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid))
+      const snap = await getDoc(doc(db, "users", user.uid))
 
-        if (!snap.exists() || snap.data().role !== "kasir") {
-          await signOut(auth)
-          window.location.href = "/login"
-          return
-        }
-
-        setSession(user)
-      } catch (err) {
-        console.error(err)
+      if (!snap.exists() || snap.data().role !== "kasir") {
+        await signOut(auth)
         window.location.href = "/login"
+        return
       }
+
+      setSession(user)
     })
 
     return () => unsubAuth()
   }, [])
 
-  // ======================
-  // ORDERS REALTIME
-  // ======================
+  // ================= ORDERS REALTIME =================
   useEffect(() => {
     if (!session?.uid) return
 
@@ -69,20 +61,13 @@ export default function Kasir() {
       orderBy("created_at", "desc")
     )
 
-    if (unsubOrdersRef.current) {
-      unsubOrdersRef.current()
-      unsubOrdersRef.current = null
-    }
-
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(d => ({
         id: d.id,
         ...d.data()
       }))
 
-      const pendingCount = data.filter(o =>
-        !o.status || o.status === "pending"
-      ).length
+      const pendingCount = data.filter(o => !o.status || o.status === "pending").length
 
       if (pendingCount > prevPendingCount.current) {
         playSound()
@@ -96,59 +81,28 @@ export default function Kasir() {
 
     unsubOrdersRef.current = unsub
 
-    return () => {
-      if (unsubOrdersRef.current) {
-        unsubOrdersRef.current()
-        unsubOrdersRef.current = null
-      }
-    }
+    return () => unsub()
   }, [session])
 
-  // ======================
-  // CLEANUP EXTRA (ANTI BUG MOBILE)
-  // ======================
-  useEffect(() => {
-    return () => {
-      if (unsubOrdersRef.current) {
-        unsubOrdersRef.current()
-        unsubOrdersRef.current = null
-      }
-    }
-  }, [])
-
-  // ======================
-  // MARK DONE
-  // ======================
+  // ================= MARK DONE =================
   const markDone = async (order) => {
-    try {
-      if (!order?.id) return
+    await updateDoc(doc(db, "orders", order.id), {
+      status: "done",
+      kasir_email: session?.email || ""
+    })
 
-      await updateDoc(doc(db, "orders", order.id), {
-        status: "done",
-        kasir_email: session?.email || ""
-      })
+    await Promise.all(
+      (order.items || []).map(item => {
+        const field =
+          item.varian === "Lite" ? "stok_lite" :
+          item.varian === "Healthy" ? "stok_healthy" :
+          item.varian === "Sultan" ? "stok_sultan" : "stok"
 
-      const items = order.items || []
-
-      await Promise.all(
-        items.map((item) => {
-          if (!item?.id) return
-
-          const field =
-            item.varian === "Lite" ? "stok_lite" :
-            item.varian === "Healthy" ? "stok_healthy" :
-            item.varian === "Sultan" ? "stok_sultan" : "stok"
-
-          return updateDoc(doc(db, "products", item.id), {
-            [field]: increment(-item.qty || 0)
-          })
+        return updateDoc(doc(db, "products", item.id), {
+          [field]: increment(-item.qty)
         })
-      )
-
-    } catch (err) {
-      console.error(err)
-      alert("Gagal update order")
-    }
+      })
+    )
   }
 
   const handleLogout = async () => {
@@ -156,143 +110,79 @@ export default function Kasir() {
     window.location.href = "/login"
   }
 
-  // ======================
-  // FILTER (CLIENT SIDE)
-  // ======================
-  const filteredOrders = orders.filter(order => {
+  // ================= FILTER =================
+  const filteredOrders = orders.filter(o => {
     if (filter === "all") return true
-    if (filter === "done") return order.status === "done"
-    return !order.status || order.status === "pending"
+    if (filter === "done") return o.status === "done"
+    return !o.status || o.status === "pending"
   })
 
-  if (loading) {
-    return <div style={styles.page}>Loading...</div>
-  }
+  if (loading) return <div style={styles.page}>Loading...</div>
 
-  // ======================
-  // UI
-  // ======================
   return (
-    <div style={styles.page}>
-      <div style={styles.row}>
-        <h2 style={styles.title}>🔥 KASIR LIVE</h2>
-        <button onClick={handleLogout} style={styles.smallBtn}>
-          Logout
-        </button>
-      </div>
+    <>
+      {/* ✅ PWA HEAD FIX */}
+      <Head>
+        <title>Kasir TotalGo</title>
+        <meta name="description" content="Dashboard kasir TotalGo" />
 
-      <div style={styles.filterBox}>
-        <button onClick={() => setFilter("pending")} style={styles.btnFilter(filter === "pending")}>Pending</button>
-        <button onClick={() => setFilter("done")} style={styles.btnFilter(filter === "done")}>Done</button>
-        <button onClick={() => setFilter("all")} style={styles.btnFilter(filter === "all")}>All</button>
-      </div>
+        <link rel="manifest" href="/manifest.kasir.json" />
+        <meta name="theme-color" content="#ea580c" />
 
-      {filteredOrders.length === 0 ? (
-        <p style={{ opacity: 0.6, textAlign: "center", marginTop: 40 }}>
-          Tidak ada order
-        </p>
-      ) : (
-        filteredOrders.map(order => (
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Kasir TotalGo" />
+      </Head>
+
+      <div style={styles.page}>
+        <div style={styles.row}>
+          <h2>🔥 KASIR LIVE</h2>
+          <button onClick={handleLogout} style={styles.smallBtn}>Logout</button>
+        </div>
+
+        <div style={styles.filterBox}>
+          <button onClick={() => setFilter("pending")} style={styles.btnFilter(filter === "pending")}>Pending</button>
+          <button onClick={() => setFilter("done")} style={styles.btnFilter(filter === "done")}>Done</button>
+          <button onClick={() => setFilter("all")} style={styles.btnFilter(filter === "all")}>All</button>
+        </div>
+
+        {filteredOrders.map(order => (
           <div key={order.id} style={styles.card}>
             <div style={styles.row}>
-              <div>
-                <b>#{order.nomor_antrian}</b>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  {order.nama_customer} - Meja {order.no_meja}
-                </div>
-              </div>
-              <span style={styles.status(order.status)}>
-                {order.status || "pending"}
-              </span>
+              <b>#{order.nomor_antrian}</b>
+              <span>{order.status || "pending"}</span>
             </div>
 
             <div>
               {order.items?.map((item, i) => (
                 <div key={i} style={styles.item}>
                   <span>{item.nama} {item.varian} x{item.qty}</span>
-                  <span>
-                    Rp{(item.harga * item.qty).toLocaleString("id-ID")}
-                  </span>
                 </div>
               ))}
             </div>
 
-            <div style={{ ...styles.row, marginTop: 8 }}>
-              <b>Total</b>
-              <b>Rp{order.total?.toLocaleString("id-ID")}</b>
-            </div>
-
-            {order.status !== "done" && (
-              <button onClick={() => markDone(order)} style={styles.btn}>
-                ✔ SELESAIKAN
-              </button>
-            )}
+            <button onClick={() => markDone(order)} style={styles.btn}>
+              SELESAIKAN
+            </button>
           </div>
-        ))
-      )}
-    </div>
+        ))}
+      </div>
+    </>
   )
 }
 
 const styles = {
-  page: {
-    background: "#000",
-    color: "#fff",
-    minHeight: "100vh",
-    padding: 12,
-    fontFamily: "sans-serif",
-    maxWidth: 480,
-    margin: "0 auto"
-  },
-  title: { fontSize: 18, margin: 0 },
-  row: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  filterBox: { display: "flex", gap: 8, marginBottom: 12, marginTop: 12 },
-  btnFilter: (active) => ({
+  page: { background: "#000", color: "#fff", minHeight: "100vh", padding: 12, maxWidth: 480, margin: "0 auto" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  filterBox: { display: "flex", gap: 8, margin: "12px 0" },
+  btnFilter: (a) => ({
     flex: 1,
     padding: 10,
-    borderRadius: 10,
-    border: "none",
-    background: active ? "#fff" : "#222",
-    color: active ? "#000" : "#fff",
-    fontWeight: "bold"
+    background: a ? "#fff" : "#222",
+    color: a ? "#000" : "#fff",
+    borderRadius: 10
   }),
-  card: {
-    background: "#111",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
-    border: "1px solid #222"
-  },
-  status: (s) => ({
-    fontSize: 10,
-    padding: "2px 6px",
-    borderRadius: 6,
-    background: s === "done" ? "green" : "#555"
-  }),
-  item: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 13,
-    padding: "4px 0",
-    borderBottom: "1px solid #222"
-  },
-  btn: {
-    width: "100%",
-    marginTop: 10,
-    padding: 14,
-    background: "#fff",
-    color: "#000",
-    border: "none",
-    borderRadius: 10,
-    fontWeight: "bold",
-    fontSize: 14
-  },
-  smallBtn: {
-    padding: "8px 12px",
-    fontSize: 12,
-    background: "#333",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8
-  }
+  card: { background: "#111", padding: 12, marginBottom: 10, borderRadius: 12 },
+  item: { fontSize: 13, padding: 4 },
+  btn: { width: "100%", marginTop: 10, padding: 12, background: "#fff", color: "#000", borderRadius: 10 },
+  smallBtn: { padding: 8, background: "#333", color: "#fff", borderRadius: 8 }
 }
