@@ -82,18 +82,21 @@ export default function Kasir() {
 const styles = {
   page: {
     background: "linear-gradient(135deg, #fef7ff, #f0f9ff 50%, #ecfdf5)",
+    backgroundAttachment: "fixed",
     color: "#1e293b",
     minHeight: "100vh",
+    minHeight: "100dvh",
     fontFamily: "'Inter', 'Segoe UI', sans-serif",
     WebkitFontSmoothing: "antialiased"
   },
 
   container: {
     width: "100%",
-    maxWidth: 500,
+    maxWidth: "100%", // <-- UDAH GAK 500 LAGI. FULL LAYAR
     margin: "0 auto",
-    padding: 16,
-    boxSizing: "border-box"
+    padding: 12, // <-- Padding dikecilin biar card makin lebar
+    boxSizing: "border-box",
+    minHeight: "100dvh",
   },
 
   loading: {
@@ -114,7 +117,7 @@ const styles = {
     background: "rgba(255,255,255,0.9)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    padding: "12px 16px",
+    padding: "16px", // <-- GEDEIN
     borderRadius: 20,
     boxShadow: "0 4px 20px rgba(203, 213, 225, 0.25)",
     border: "1px solid rgba(255,255,255,1)",
@@ -122,63 +125,56 @@ const styles = {
   },
 
   h1: {
-    fontSize: 20,
+    fontSize: 22, // <-- GEDEIN
     margin: 0,
     color: "#0f172a",
     fontWeight: 700
   },
 
   email: {
-    fontSize: 11,
+    fontSize: 12, // <-- GEDEIN DIKIT
     opacity: 0.7,
-    margin: "2px 0 0 0",
+    margin: "4px 0 0 0",
     color: "#64748b"
   },
 
   btnGroup: {
     display: "flex",
-    gap: 8,
-    marginBottom: 16
+    gap: 10, // <-- GEDEIN GAP
+    marginBottom: 20 // <-- GEDEIN JARAK
   },
 
-  btnPrimary: {
+  btnPrimary: { // TOMBOL GEDE
     flex: 1,
-    padding: "12px",
+    padding: "16px", // <-- GEDEIN DARI 12 JADI 16
     background: "linear-gradient(135deg, #86efac, #4ade80)",
     color: "#14532d",
-    borderRadius: 14,
+    borderRadius: 16,
     border: "none",
     cursor: "pointer",
     fontWeight: 700,
-    fontSize: 14,
+    fontSize: 16, // <-- GEDEIN FONT
     boxShadow: "0 4px 14px rgba(74, 222, 128, 0.35)",
     transition: "all 0.2s ease"
   },
 
-  btnSecondary: {
+  btnSecondary: { // TOMBOL GEDE
     flex: 1,
-    padding: "12px",
+    padding: "16px", // <-- GEDEIN
     background: "linear-gradient(135deg, #bae6fd, #7dd3fc)",
     color: "#0c4a6e",
-    borderRadius: 14,
+    borderRadius: 16,
     border: "none",
     cursor: "pointer",
     fontWeight: 600,
-    fontSize: 14,
+    fontSize: 16, // <-- GEDEIN FONT
     transition: "all 0.2s ease"
   },
 
   btnLogout: {
-    padding: "8px 14px",
+    padding: "10px 16px", // <-- GEDEIN
     background: "linear-gradient(135deg, #fbcfe8, #f9a8d4)",
-    color: "#831843",
-    borderRadius: 12,
-    border: "none",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: 13,
-    boxShadow: "0 4px 14px rgba(249, 168, 212, 0.35)"
-  },
+    color: "#831},
 
   orderList: { display: 'flex', flexDirection: 'column', gap: 12 },
   empty: { textAlign: 'center', opacity: 0.6, marginTop: 40, fontSize: 14, color: '#64748b' },
