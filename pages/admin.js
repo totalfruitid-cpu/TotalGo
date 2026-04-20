@@ -31,7 +31,6 @@ export default function Admin() {
     harga_lite: '',
     harga_healthy: '',
     harga_sultan: '',
-    stok: '',
     stok_lite: '',
     stok_healthy: '',
     stok_sultan: '',
@@ -39,26 +38,22 @@ export default function Admin() {
     gambar_url: ''
   })
 
-  // =====================
-  // useEffect 1: Cek role ke server via cookie httpOnly
-  // =====================
   useEffect(() => {
     fetch('/api/checkRole')
-     .then(res => {
+    .then(res => {
         if (!res.ok) throw new Error('Unauthorized')
         return res.json()
       })
-     .then(data => {
+    .then(data => {
         if (data.role!== 'admin') {
-          router.replace('/kasir') // bukan admin -> tendang
+          router.replace('/kasir')
         } else {
-          setLoading(false) // role aman -> baru boleh render halaman
+          setLoading(false)
         }
       })
-     .catch(() => router.replace('/')) // token invalid/expired -> tendang ke login
+    .catch(() => router.replace('/'))
   }, [router])
 
-  // useEffect 2: Listener auth Firebase
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -77,14 +72,11 @@ export default function Admin() {
     window.location.href = '/'
   }
 
-  // =====================
-  // LOAD PRODUCTS
-  // =====================
   const loadProducts = async () => {
     const snap = await getDocs(collection(db, 'products'))
     const data = snap.docs.map(d => ({
       id: d.id,
-     ...d.data()
+    ...d.data()
     }))
     data.sort((a, b) =>
       (b.created_at?.toMillis?.() || 0) -
@@ -93,22 +85,16 @@ export default function Admin() {
     setProducts(data)
   }
 
-  // =====================
-  // SANITIZE NUMBER
-  // =====================
   const sanitizeNumber = (v) => {
     if (v === '' || v === null || v === undefined) return null
     const num = Number(String(v).replace(/[^\d.-]/g, ''))
     return Number.isFinite(num)? num : null
   }
 
-  // =====================
-  // BUILD PAYLOAD
-  // =====================
   const buildPayload = () => {
     const gambar = form.gambar_url?.trim()
-     ? (form.gambar_url.startsWith("http")
-       ? form.gambar_url
+    ? (form.gambar_url.startsWith("http")
+      ? form.gambar_url
         : BASE_URL_GAMBAR + form.gambar_url)
       : ""
 
@@ -126,7 +112,7 @@ export default function Admin() {
 
     if (form.punya_varian) {
       return {
-       ...base,
+      ...base,
         harga_lite: toFirestoreNum(form.harga_lite),
         harga_healthy: toFirestoreNum(form.harga_healthy),
         harga_sultan: toFirestoreNum(form.harga_sultan),
@@ -137,15 +123,12 @@ export default function Admin() {
     }
 
     return {
-     ...base,
+    ...base,
       harga_lite: toFirestoreNum(form.harga_lite),
       stok: toFirestoreNum(form.stok)
     }
   }
 
-  // =====================
-  // SAVE
-  // =====================
   const saveProduct = async (e) => {
     e.preventDefault()
     if (!form.nama.trim()) {
@@ -155,7 +138,7 @@ export default function Admin() {
 
     if (form.punya_varian) {
       const adaHargaDiisi = [form.harga_lite, form.harga_healthy, form.harga_sultan]
-       .some(h => h!== '' && h!== null)
+      .some(h => h!== '' && h!== null)
       if (!adaHargaDiisi) {
         alert("Minimal isi 1 harga varian")
         return
@@ -227,9 +210,6 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // =====================
-  // GUARD RENDER
-  // =====================
   if (loading) return <div style={styles.loading}>Checking access...</div>
 
   return (
@@ -359,7 +339,7 @@ export default function Admin() {
                       <b>{p.nama}</b>
                       <p style={styles.desc}>
                         {p.punya_varian
-                         ? `Lite:${p.harga_lite?? 0} | Healthy:${p.harga_healthy?? 0} | Sultan:${p.harga_sultan?? 0}`
+                        ? `Lite:${p.harga_lite?? 0} | Healthy:${p.harga_healthy?? 0} | Sultan:${p.harga_sultan?? 0}`
                           : `Harga:${p.harga_lite?? 0} | Stok:${p.stok?? 0}`}
                       </p>
                     </div>
