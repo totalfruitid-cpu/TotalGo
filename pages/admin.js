@@ -39,6 +39,7 @@ export default function Admin() {
     gambar_url: ''
   })
 
+  // ================= ROLE CHECK =================
   useEffect(() => {
     fetch('/api/checkRole')
       .then(res => {
@@ -55,6 +56,7 @@ export default function Admin() {
       .catch(() => router.replace('/'))
   }, [router])
 
+  // ================= AUTH =================
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -67,42 +69,45 @@ export default function Admin() {
     return () => unsub()
   }, [router])
 
+  // ================= LOGOUT =================
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' })
     await signOut(auth)
     window.location.href = '/'
   }
 
+  // ================= LOAD PRODUCTS =================
   const loadProducts = async () => {
     const snap = await getDocs(collection(db, 'products'))
     const data = snap.docs.map(d => ({
       id: d.id,
       ...d.data()
     }))
+
     data.sort((a, b) =>
       (b.created_at?.toMillis?.() || 0) -
       (a.created_at?.toMillis?.() || 0)
     )
+
     setProducts(data)
   }
 
+  // ================= HELPER =================
   const sanitizeNumber = (v) => {
-    if (v === '' || v === null || v === undefined) return null
+    if (!v) return null
     const num = Number(String(v).replace(/[^\d.-]/g, ''))
     return Number.isFinite(num) ? num : null
   }
 
+  const toNum = (v) => sanitizeNumber(v) ?? 0
+
+  // ================= BUILD PAYLOAD =================
   const buildPayload = () => {
     const gambar = form.gambar_url?.trim()
       ? (form.gambar_url.startsWith("http")
         ? form.gambar_url
         : BASE_URL_GAMBAR + form.gambar_url)
       : ""
-
-    const toNum = (val) => {
-      const n = sanitizeNumber(val)
-      return n === null ? 0 : n
-    }
 
     const base = {
       nama: form.nama.trim(),
@@ -130,11 +135,13 @@ export default function Admin() {
     }
   }
 
+  // ================= SAVE =================
   const saveProduct = async (e) => {
     e.preventDefault()
     if (!form.nama.trim()) return alert("Nama wajib diisi")
 
     setSaving(true)
+
     try {
       const payload = buildPayload()
 
@@ -147,13 +154,15 @@ export default function Admin() {
 
       resetForm()
       await loadProducts()
+
     } catch (err) {
       alert(err.message)
-    } finally {
-      setSaving(false)
     }
+
+    setSaving(false)
   }
 
+  // ================= RESET =================
   const resetForm = () => {
     setForm({
       id: '',
@@ -171,12 +180,14 @@ export default function Admin() {
     })
   }
 
+  // ================= DELETE =================
   const deleteProduct = async (id) => {
     if (!confirm('Hapus produk?')) return
     await deleteDoc(doc(db, 'products', id))
     loadProducts()
   }
 
+  // ================= EDIT =================
   const editProduct = (p) => {
     setForm({
       id: p.id,
@@ -192,6 +203,7 @@ export default function Admin() {
       deskripsi: p.deskripsi || '',
       gambar_url: (p.gambar_url || '').replace(BASE_URL_GAMBAR, '')
     })
+
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -199,26 +211,23 @@ export default function Admin() {
 
   return (
     <>
-      {/* ✅ PWA HEAD FIXED */}
+      {/* HEAD PWA */}
       <Head>
         <title>Admin TotalGo</title>
         <meta name="description" content="Dashboard admin TotalGo" />
-
         <link rel="manifest" href="/manifest.admin.json" />
         <meta name="theme-color" content="#ea580c" />
-
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Admin TotalGo" />
       </Head>
 
       <div style={styles.page}>
         <div style={styles.container}>
+
           <header style={styles.header}>
             <div>
               <h1 style={styles.h1}>Admin TotalGo</h1>
               <p style={styles.email}>{session?.email}</p>
             </div>
+
             <button onClick={handleLogout} style={styles.btnLogout}>
               Logout
             </button>
@@ -226,9 +235,7 @@ export default function Admin() {
 
           {/* FORM */}
           <div style={styles.card}>
-            <h2 style={styles.h2}>
-              {form.id ? "Edit Produk" : "Tambah Produk"}
-            </h2>
+            <h2>{form.id ? "Edit Produk" : "Tambah Produk"}</h2>
 
             <form onSubmit={saveProduct}>
               <input
@@ -242,10 +249,56 @@ export default function Admin() {
                 <input
                   type="checkbox"
                   checked={form.punya_varian}
-                  onChange={e => setForm({ ...form, punya_varian: e.target.checked })}
+                  onChange={e =>
+                    setForm({ ...form, punya_varian: e.target.checked })
+                  }
                 />
                 Punya Varian
               </label>
 
-              <button style={styles.btnPrimary} disabled={saving}>
-                {saving ? "Menyimpan..." : form.id ? "Update" : "S
+              {/* BUTTON FIX FINAL */}
+              <div style={styles.btnGroup}>
+                <button style={styles.btnPrimary} disabled={saving}>
+                  {saving
+                    ? "Menyimpan..."
+                    : form.id
+                      ? "Update"
+                      : "Simpan"}
+                </button>
+
+                {form.id && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    style={styles.btnSecondary}
+                  >
+                    Batal
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ================= STYLE =================
+const styles = {
+  page: { background: "#000", color: "#fff", minHeight: "100vh" },
+  container: { maxWidth: 480, margin: "0 auto", padding: 16 },
+  loading: { padding: 20, textAlign: "center" },
+  header: { display: "flex", justifyContent: "space-between" },
+  h1: { fontSize: 22 },
+  email: { fontSize: 12, opacity: 0.7 },
+  card: { background: "#111", padding: 16, borderRadius: 12, marginTop: 16 },
+  input: { width: "100%", padding: 10, marginBottom: 10 },
+  checkboxLabel: { display: "flex", gap: 8, marginBottom: 10 },
+
+  btnGroup: { display: "flex", gap: 8 },
+  btnPrimary: { flex: 1, padding: 10, background: "#fff", color: "#000", borderRadius: 8 },
+  btnSecondary: { flex: 1, padding: 10, background: "#333", color: "#fff", borderRadius: 8 },
+  btnLogout: { padding: 8, background: "#222", color: "#fff", borderRadius: 8 }
+}
