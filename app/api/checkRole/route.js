@@ -1,4 +1,4 @@
-import admin from "@/lib/firebaseAdmin"
+import admin from "../../../lib/firebaseAdmin"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
