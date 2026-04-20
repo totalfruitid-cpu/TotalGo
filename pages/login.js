@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useRouter } from "next/router"
-import { signInWithEmailAndPassword, signOut } from "firebase/auth"
+import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth } from "../lib/firebase"
 import Head from "next/head"
 
@@ -12,60 +12,50 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const from = router.query.from || null
-  const sessionError = router.query.error
-
-  if (sessionError === "session_expired" && !error) {
-    setError("Sesi Anda habis. Silakan login lagi.")
-  }
-
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    if (!email.includes("@") || password.length < 6) {
-      setError("Email atau password tidak valid")
-      setLoading(false)
-      return
-    }
-
     try {
+      if (!email.includes("@") || password.length < 6) {
+        throw new Error("Email atau password tidak valid")
+      }
+
+      // 1. Login Firebase
       const userCred = await signInWithEmailAndPassword(auth, email, password)
       const idToken = await userCred.user.getIdToken(true)
 
+      // 2. Set session cookie (server)
       const res = await fetch("/api/setCookie", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken })
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Gagal membuat sesi")
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Gagal set session")
+      }
 
-      const roleRoutes = {
+      // 3. Ambil role dari server (SOURCE OF TRUTH)
+      const roleRes = await fetch("/api/checkRole")
+      const roleData = await roleRes.json()
+
+      if (!roleRes.ok) {
+        throw new Error(roleData.error || "Gagal ambil role")
+      }
+
+      // 4. Redirect berdasarkan role
+      const routes = {
         admin: "/admin",
         kasir: "/kasir"
       }
 
-      const target = roleRoutes[data.role]
-
-      if (!target) {
-        await signOut(auth)
-        await fetch("/api/logout", { method: "POST" })
-        throw new Error("Akun ini tidak punya akses ke sistem")
-      }
-
-      router.replace(from || target)
+      router.replace(routes[roleData.role] || "/")
 
     } catch (err) {
-      console.error(err)
-
-      if (err.code === "auth/wrong-password") setError("Password salah")
-      else if (err.code === "auth/user-not-found") setError("Email tidak terdaftar")
-      else if (err.code === "auth/too-many-requests") setError("Terlalu banyak percobaan. Coba lagi nanti")
-      else setError(err.message || "Login gagal")
-
+      setError(err.message || "Login gagal")
     } finally {
       setLoading(false)
     }
@@ -77,30 +67,16 @@ export default function Login() {
         <title>Login - TotalGo</title>
       </Head>
 
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "sans-serif",
-        background: "#f5f5f5"
-      }}>
-        <form onSubmit={handleLogin} style={{
-          padding: 24,
-          background: "white",
-          borderRadius: 12,
-          width: 320,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
-        }}>
-          <h2>TotalGo Login</h2>
+      <div style={styles.container}>
+        <form onSubmit={handleLogin} style={styles.form}>
+          <h2>Login</h2>
 
           <input
-            placeholder="Email"
             type="email"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
-            required
+            style={styles.input}
             disabled={loading}
           />
 
@@ -109,19 +85,14 @@ export default function Login() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            required
+            style={styles.input}
             disabled={loading}
           />
 
-          {error && (
-            <p style={{ color: "red", fontSize: 12, marginBottom: 10 }}>
-              {error}
-            </p>
-          )}
+          {error && <p style={styles.error}>{error}</p>}
 
-          <button style={btnStyle} disabled={loading}>
-            {loading ? "Memproses..." : "Login"}
+          <button style={styles.button} disabled={loading}>
+            {loading ? "Loading..." : "Login"}
           </button>
         </form>
       </div>
@@ -129,21 +100,40 @@ export default function Login() {
   )
 }
 
-const inputStyle = {
-  width: "100%",
-  padding: 10,
-  marginBottom: 10,
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  boxSizing: "border-box"
-}
-
-const btnStyle = {
-  width: "100%",
-  padding: 10,
-  background: "#000",
-  color: "white",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer"
+const styles = {
+  container: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontFamily: "sans-serif",
+    background: "#f5f5f5"
+  },
+  form: {
+    padding: 24,
+    background: "white",
+    borderRadius: 12,
+    width: 320,
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+  },
+  input: {
+    width: "100%",
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 8,
+    border: "1px solid #ddd"
+  },
+  button: {
+    width: "100%",
+    padding: 10,
+    background: "#000",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer"
+  },
+  error: {
+    color: "red",
+    fontSize: 12
+  }
 }
