@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { auth } from "../lib/firebase";
+import { auth, db } from "../lib/firebase"; // <-- TAMBAH db
 import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore"; // <-- TAMBAH INI
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
 
@@ -26,7 +27,6 @@ export default function Login() {
   const redirectRef = useRef(false);
   const router = useRouter();
 
-  // reset lock saat unmount (anti Fast Refresh bug)
   useEffect(() => {
     return () => {
       redirectRef.current = false;
@@ -42,7 +42,25 @@ export default function Login() {
     else {
       signOut(auth);
       redirectRef.current = false;
+      setError("Role tidak dikenal");
     }
+  };
+
+  // FUNGSI BARU: BACA DARI FIRESTORE
+  const getUserRoleFromFirestore = async (uid) => {
+    const userDocRef = doc(db, "users", uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+      throw new Error("Akun belum terdaftar di database");
+    }
+
+    const data = userDocSnap.data();
+    if (!data.role) {
+      throw new Error("Akun belum di-assign role");
+    }
+
+    return data.role;
   };
 
   useEffect(() => {
@@ -54,20 +72,15 @@ export default function Login() {
           return;
         }
 
-        const tokenResult = await user.getIdTokenResult();
-        const role = tokenResult.claims.role;
+        const role = await getUserRoleFromFirestore(user.uid); // <-- GANTI DI SINI
+        const token = await user.getIdToken();
 
-        if (!role) {
-          await signOut(auth);
-          setCheckingAuth(false);
-          return;
-        }
-
-        setAuthCookie(tokenResult.token);
+        setAuthCookie(token);
         redirectByRole(role);
 
       } catch (err) {
         console.error(err);
+        setError(err.message);
         await signOut(auth);
       } finally {
         setCheckingAuth(false);
@@ -91,16 +104,10 @@ export default function Login() {
         password
       );
 
-      const tokenResult = await cred.user.getIdTokenResult();
-      const role = tokenResult.claims.role;
+      const role = await getUserRoleFromFirestore(cred.user.uid); // <-- GANTI DI SINI JUGA
+      const token = await cred.user.getIdToken();
 
-      if (!role) {
-        setError("Akun belum di-assign role");
-        await signOut(auth);
-        return;
-      }
-
-      setAuthCookie(tokenResult.token);
+      setAuthCookie(token);
       redirectByRole(role);
 
     } catch (err) {
@@ -114,7 +121,8 @@ export default function Login() {
         "auth/network-request-failed": "Koneksi bermasalah",
       };
 
-      setError(map[err.code] || "Login gagal");
+      setError(map[err.code] || err.message || "Login gagal");
+      if (err.code) await signOut(auth);
     } finally {
       setLoading(false);
     }
@@ -162,11 +170,11 @@ export default function Login() {
           <button
             disabled={loading || redirectRef.current}
             style={{
-              ...styles.btn,
-              opacity: loading ? 0.6 : 1,
+             ...styles.btn,
+              opacity: loading? 0.6 : 1,
             }}
           >
-            {loading ? "Loading..." : "Login"}
+            {loading? "Loading..." : "Login"}
           </button>
 
           {error && <p style={styles.error}>{error}</p>}
@@ -176,7 +184,6 @@ export default function Login() {
   );
 }
 
-// ================= STYLE =================
 const styles = {
   page: {
     padding: 20,
@@ -189,7 +196,6 @@ const styles = {
   },
   container: { width: "100%", maxWidth: 320 },
   h2: { textAlign: "center", marginBottom: 20 },
-
   input: {
     width: "100%",
     padding: 12,
@@ -200,7 +206,6 @@ const styles = {
     borderRadius: 8,
     boxSizing: "border-box",
   },
-
   btn: {
     width: "100%",
     padding: 12,
@@ -212,19 +217,13 @@ const styles = {
     cursor: "pointer",
     marginTop: 8,
   },
-
   error: {
     color: "#ff4d4d",
     marginTop: 12,
     textAlign: "center",
     fontSize: 14,
   },
-
-  skeletonContainer: {
-    width: "100%",
-    maxWidth: 320,
-  },
-
+  skeletonContainer: { width: "100%", maxWidth: 320 },
   skeletonH2: {
     height: 28,
     width: "60%",
@@ -232,7 +231,6 @@ const styles = {
     borderRadius: 8,
     margin: "0 auto 20px",
   },
-
   skeletonInput: {
     height: 44,
     width: "100%",
@@ -240,7 +238,6 @@ const styles = {
     borderRadius: 8,
     margin: "10px 0",
   },
-
   skeletonBtn: {
     height: 44,
     width: "100%",
