@@ -3,6 +3,7 @@
   "short_name": "TotalGo",
   "description": "Aplikasi TotalGo",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ea580c",
