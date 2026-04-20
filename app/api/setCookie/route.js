@@ -6,21 +6,16 @@ import admin from '../../../lib/firebaseAdmin'
 
 export async function POST(request) {
   try {
-    const { token } = await request.json()
-    if (!token) {
+    const { idToken } = await request.json()
+    if (!idToken) {
       return NextResponse.json({ error: 'No token' }, { status: 400 })
     }
 
-    const cookieStore = cookies()
-
-    // hapus session lama
-    cookieStore.delete('session')
-
-    // verifikasi token
-    const decodedToken = await admin.auth().verifyIdToken(token)
+    // Verifikasi token
+    const decodedToken = await admin.auth().verifyIdToken(idToken)
     const uid = decodedToken.uid
 
-    // cek role dari firestore (tetap dipakai)
+    // Ambil role dari Firestore
     const userDoc = await admin.firestore().collection('users').doc(uid).get()
     if (!userDoc.exists) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -31,17 +26,27 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Role not assigned' }, { status: 403 })
     }
 
-    // bikin SESSION COOKIE (ini yang dibaca middleware & checkRole)
-    const expiresIn = 60 * 60 * 24 * 5 * 1000
-    const sessionCookie = await admin
-      .auth()
-      .createSessionCookie(token, { expiresIn })
+    const cookieStore = cookies()
 
-    cookieStore.set('session', sessionCookie, {
+    // Hapus cookie lama
+    cookieStore.delete('authToken')
+    cookieStore.delete('userRole')
+
+    // Set cookie authToken buat middleware
+    cookieStore.set('authToken', idToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: expiresIn / 1000,
+      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      sameSite: 'lax',
+    })
+
+    // Set cookie userRole buat middleware
+    cookieStore.set('userRole', role, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
     })
 
