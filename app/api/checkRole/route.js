@@ -1,6 +1,6 @@
-import admin from "../../../lib/firebaseAdmin"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import admin from "../../../lib/firebaseAdmin"
 
 export const runtime = "nodejs"
 
@@ -12,7 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const decoded = await admin.auth().verifySessionCookie(token, true)
+    const decoded = await admin.auth().verifyIdToken(token)
     const uid = decoded.uid
 
     const doc = await admin.firestore().collection("users").doc(uid).get()
@@ -24,6 +24,7 @@ export async function GET() {
     const role = doc.data()?.role || "user"
 
     const allowed = ["admin", "kasir", "user"]
+
     if (!allowed.includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 403 })
     }
