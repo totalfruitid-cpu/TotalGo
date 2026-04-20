@@ -1,7 +1,9 @@
+'use client'
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { auth, db } from "../lib/firebase"
 import { onAuthStateChanged, signOut } from "firebase/auth"
+import { useRouter } from 'next/navigation'
 import {
   collection,
   getDocs,
@@ -10,17 +12,17 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
-  getDoc
 } from "firebase/firestore"
 
 const BASE_URL_GAMBAR = "/menu/"
 const PLACEHOLDER_IMG = "/placeholder.png"
 
 export default function Admin() {
+  const router = useRouter()
   const [session, setSession] = useState(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false) // PATCH 3: Anti double-click
+  const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
     id: '',
@@ -29,7 +31,6 @@ export default function Admin() {
     harga_lite: '',
     harga_healthy: '',
     harga_sultan: '',
-    stok: '',
     stok_lite: '',
     stok_healthy: '',
     stok_sultan: '',
@@ -38,37 +39,43 @@ export default function Admin() {
   })
 
   // =====================
-  // AUTH CHECK
+  // FIX BUG #1: PISAH useEffect BIAR GAK MEMORY LEAK
   // =====================
+
+  // useEffect 1: Satpam utama. Cek role ke server via cookie httpOnly
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) return window.location.href = '/login'
-
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid))
-
-        if (!snap.exists() || snap.data().role !== "admin") {
-          await signOut(auth)
-          return window.location.href = '/login'
+    fetch('/api/checkRole')
+   .then(res => {
+        if (!res.ok) throw new Error('Unauthorized')
+        return res.json()
+      })
+   .then(data => {
+        if (data.role!== 'admin') {
+          router.replace('/kasir') // bukan admin -> tendang
+        } else {
+          setLoading(false) // role aman -> baru boleh render halaman
         }
+      })
+   .catch(() => router.replace('/')) // token invalid/expired -> tendang ke login
+  }, [router])
 
+  // useEffect 2: Listener auth Firebase. Jalan terpisah.
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
         setSession(user)
-        await loadProducts()
-      } catch (err) {
-        console.error(err)
-        await signOut(auth)
-        window.location.href = '/login'
+        loadProducts()
+      } else {
+        router.replace('/')
       }
-
-      setLoading(false)
     })
-
-    return () => unsub()
-  }, [])
+    return () => unsub() // <-- Bersihin listener biar gak numpuk
+  }, [router])
 
   const handleLogout = async () => {
-    await signOut(auth)
-    window.location.href = '/login'
+    await fetch('/api/logout', { method: 'POST' }) // Hapus cookie httpOnly di server
+    await signOut(auth) // Logout Firebase client
+    window.location.href = '/'
   }
 
   // =====================
@@ -76,45 +83,39 @@ export default function Admin() {
   // =====================
   const loadProducts = async () => {
     const snap = await getDocs(collection(db, 'products'))
-
     const data = snap.docs.map(d => ({
       id: d.id,
-      ...d.data()
+   ...d.data()
     }))
-
     data.sort((a, b) =>
       (b.created_at?.toMillis?.() || 0) -
       (a.created_at?.toMillis?.() || 0)
     )
-
     setProducts(data)
   }
 
   // =====================
-  // SANITIZE NUMBER - PRO VERSION
+  // SANITIZE NUMBER
   // =====================
-  // PATCH 2: Return null kalo invalid/kosong. Biar ketauan bedanya input error vs sengaja 0
   const sanitizeNumber = (v) => {
     if (v === '' || v === null || v === undefined) return null
     const num = Number(String(v).replace(/[^\d.-]/g, ''))
-    return Number.isFinite(num) ? num : null
+    return Number.isFinite(num)? num : null
   }
 
   // =====================
-  // BUILD PAYLOAD - NULL SAFE
+  // BUILD PAYLOAD
   // =====================
   const buildPayload = () => {
     const gambar = form.gambar_url?.trim()
-      ? (form.gambar_url.startsWith("http")
-          ? form.gambar_url
+   ? (form.gambar_url.startsWith("http")
+       ? form.gambar_url
           : BASE_URL_GAMBAR + form.gambar_url)
       : ""
 
-    // Convert null ke 0 sebelum kirim ke Firestore biar Rules V3.5 lolos
-    // Tapi kita tau bedanya karena di form masih null
     const toFirestoreNum = (val) => {
       const sanitized = sanitizeNumber(val)
-      return sanitized === null ? 0 : sanitized
+      return sanitized === null? 0 : sanitized
     }
 
     const base = {
@@ -126,7 +127,7 @@ export default function Admin() {
 
     if (form.punya_varian) {
       return {
-        ...base,
+    ...base,
         harga_lite: toFirestoreNum(form.harga_lite),
         harga_healthy: toFirestoreNum(form.harga_healthy),
         harga_sultan: toFirestoreNum(form.harga_sultan),
@@ -137,7 +138,7 @@ export default function Admin() {
     }
 
     return {
-      ...base,
+  ...base,
       harga_lite: toFirestoreNum(form.harga_lite),
       stok: toFirestoreNum(form.stok)
     }
@@ -148,16 +149,14 @@ export default function Admin() {
   // =====================
   const saveProduct = async (e) => {
     e.preventDefault()
-
     if (!form.nama.trim()) {
       alert("Nama produk wajib diisi")
       return
     }
 
-    // PATCH 1: Validasi harga 0 itu valid. Ceknya 'gak diisi sama sekali'
     if (form.punya_varian) {
       const adaHargaDiisi = [form.harga_lite, form.harga_healthy, form.harga_sultan]
-        .some(h => h !== '' && h !== null)
+    .some(h => h!== '' && h!== null)
       if (!adaHargaDiisi) {
         alert("Minimal isi 1 harga varian")
         return
@@ -169,30 +168,25 @@ export default function Admin() {
       }
     }
 
-    setSaving(true) // PATCH 3: Lock button
+    setSaving(true)
     try {
       const payload = buildPayload()
-
       if (form.id) {
         await updateDoc(doc(db, 'products', form.id), payload)
       } else {
         payload.created_at = serverTimestamp()
         await addDoc(collection(db, 'products'), payload)
       }
-
       resetForm()
       await loadProducts()
     } catch (err) {
       console.error(err)
       alert(err.message)
     } finally {
-      setSaving(false) // PATCH 3: Unlock button
+      setSaving(false)
     }
   }
 
-  // =====================
-  // RESET
-  // =====================
   const resetForm = () => {
     setForm({
       id: '',
@@ -209,52 +203,42 @@ export default function Admin() {
     })
   }
 
-  // =====================
-  // DELETE
-  // =====================
   const deleteProduct = async (id) => {
     if (!confirm('Hapus produk?')) return
     await deleteDoc(doc(db, 'products', id))
     loadProducts()
   }
 
-  // =====================
-  // EDIT
-  // =====================
   const editProduct = (p) => {
     setForm({
       id: p.id,
       nama: p.nama || '',
-      punya_varian: p.punya_varian ?? true,
-      harga_lite: p.harga_lite ?? '',
-      harga_healthy: p.harga_healthy ?? '',
-      harga_sultan: p.harga_sultan ?? '',
-      stok: p.stok ?? '',
-      stok_lite: p.stok_lite ?? '',
-      stok_healthy: p.stok_healthy ?? '',
-      stok_sultan: p.stok_sultan ?? '',
+      punya_varian: p.punya_varian?? true,
+      harga_lite: p.harga_lite?? '',
+      harga_healthy: p.harga_healthy?? '',
+      harga_sultan: p.harga_sultan?? '',
+      stok: p.stok?? '',
+      stok_lite: p.stok_lite?? '',
+      stok_healthy: p.stok_healthy?? '',
+      stok_sultan: p.stok_sultan?? '',
       deskripsi: p.deskripsi || '',
       gambar_url: (p.gambar_url || '').replace(BASE_URL_GAMBAR, '')
     })
-
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // =====================
-  // UI
+  // FIX BUG #2: GUARD RENDER BIAR GAK KEDIP
   // =====================
-  if (loading) return <div style={styles.loading}>Loading...</div>
+  if (loading) return <div style={styles.loading}>Checking access...</div>
 
   return (
     <>
       <Head>
         <title>Admin TotalGo</title>
       </Head>
-
       <div style={styles.page}>
         <div style={styles.container}>
-
-          {/* HEADER */}
           <header style={styles.header}>
             <div>
               <h1 style={styles.h1}>Admin TotalGo</h1>
@@ -265,62 +249,56 @@ export default function Admin() {
             </button>
           </header>
 
-          {/* FORM */}
           <div style={styles.card}>
             <h2 style={styles.h2}>
-              {form.id ? "Edit Produk" : "Tambah Produk"}
+              {form.id? "Edit Produk" : "Tambah Produk"}
             </h2>
-
             <form onSubmit={saveProduct}>
               <input
                 placeholder="Nama Produk"
                 value={form.nama}
-                onChange={e => setForm({ ...form, nama: e.target.value })}
+                onChange={e => setForm({...form, nama: e.target.value })}
                 style={styles.input}
                 required
               />
-
               <label style={styles.checkboxLabel}>
                 <input
                   type="checkbox"
                   checked={form.punya_varian}
-                  onChange={e => setForm({ ...form, punya_varian: e.target.checked })}
+                  onChange={e => setForm({...form, punya_varian: e.target.checked })}
                 />
                 Punya Varian Lite / Healthy / Sultan
               </label>
-
-              {form.punya_varian ? (
+              {form.punya_varian? (
                 <div style={styles.grid2}>
                   <input placeholder="Harga Lite" type="text" inputMode="numeric"
                     value={form.harga_lite}
-                    onChange={e => setForm({ ...form, harga_lite: e.target.value })}
+                    onChange={e => setForm({...form, harga_lite: e.target.value })}
                     style={styles.input}
                   />
                   <input placeholder="Stok Lite" type="text" inputMode="numeric"
                     value={form.stok_lite}
-                    onChange={e => setForm({ ...form, stok_lite: e.target.value })}
+                    onChange={e => setForm({...form, stok_lite: e.target.value })}
                     style={styles.input}
                   />
-
                   <input placeholder="Harga Healthy" type="text" inputMode="numeric"
                     value={form.harga_healthy}
-                    onChange={e => setForm({ ...form, harga_healthy: e.target.value })}
+                    onChange={e => setForm({...form, harga_healthy: e.target.value })}
                     style={styles.input}
                   />
                   <input placeholder="Stok Healthy" type="text" inputMode="numeric"
                     value={form.stok_healthy}
-                    onChange={e => setForm({ ...form, stok_healthy: e.target.value })}
+                    onChange={e => setForm({...form, stok_healthy: e.target.value })}
                     style={styles.input}
                   />
-
                   <input placeholder="Harga Sultan" type="text" inputMode="numeric"
                     value={form.harga_sultan}
-                    onChange={e => setForm({ ...form, harga_sultan: e.target.value })}
+                    onChange={e => setForm({...form, harga_sultan: e.target.value })}
                     style={styles.input}
                   />
                   <input placeholder="Stok Sultan" type="text" inputMode="numeric"
                     value={form.stok_sultan}
-                    onChange={e => setForm({ ...form, stok_sultan: e.target.value })}
+                    onChange={e => setForm({...form, stok_sultan: e.target.value })}
                     style={styles.input}
                   />
                 </div>
@@ -328,37 +306,32 @@ export default function Admin() {
                 <div style={styles.grid2}>
                   <input placeholder="Harga" type="text" inputMode="numeric"
                     value={form.harga_lite}
-                    onChange={e => setForm({ ...form, harga_lite: e.target.value })}
+                    onChange={e => setForm({...form, harga_lite: e.target.value })}
                     style={styles.input}
                   />
                   <input placeholder="Stok" type="text" inputMode="numeric"
                     value={form.stok}
-                    onChange={e => setForm({ ...form, stok: e.target.value })}
+                    onChange={e => setForm({...form, stok: e.target.value })}
                     style={styles.input}
                   />
                 </div>
               )}
-
               <textarea
                 placeholder="Deskripsi"
                 value={form.deskripsi}
-                onChange={e => setForm({ ...form, deskripsi: e.target.value })}
-                style={{ ...styles.input, height: 80 }}
+                onChange={e => setForm({...form, deskripsi: e.target.value })}
+                style={{...styles.input, height: 80 }}
               />
-
               <input
                 placeholder="Gambar (nama file / url)"
                 value={form.gambar_url}
-                onChange={e => setForm({ ...form, gambar_url: e.target.value })}
+                onChange={e => setForm({...form, gambar_url: e.target.value })}
                 style={styles.input}
               />
-
               <div style={styles.btnGroup}>
-                {/* PATCH 3: Disable pas saving */}
                 <button style={styles.btnPrimary} disabled={saving}>
-                  {saving ? "Menyimpan..." : form.id ? "Update" : "Simpan"}
+                  {saving? "Menyimpan..." : form.id? "Update" : "Simpan"}
                 </button>
-
                 {form.id && (
                   <button type="button" onClick={resetForm} style={styles.btnSecondary} disabled={saving}>
                     Batal
@@ -368,16 +341,13 @@ export default function Admin() {
             </form>
           </div>
 
-          {/* LIST */}
           <div style={styles.card}>
             <h2 style={styles.h2}>List Produk</h2>
-
-            {products.length === 0 ? (
+            {products.length === 0? (
               <p style={styles.empty}>Belum ada produk</p>
             ) : (
               products.map(p => (
                 <div key={p.id} style={styles.productItem}>
-
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <img
                       src={(p.gambar_url?.trim() || PLACEHOLDER_IMG)}
@@ -385,17 +355,14 @@ export default function Admin() {
                       alt={p.nama}
                       onError={(e) => (e.target.src = PLACEHOLDER_IMG)}
                     />
-
                     <div>
                       <b>{p.nama}</b>
                       <p style={styles.desc}>
                         {p.punya_varian
-                          ? `Lite:${p.harga_lite ?? 0} | Healthy:${p.harga_healthy ?? 0} | Sultan:${p.harga_sultan ?? 0}`
-                          : `Harga:${p.harga_lite ?? 0} | Stok:${p.stok ?? 0}`}
+                      ? `Lite:${p.harga_lite?? 0} | Healthy:${p.harga_healthy?? 0} | Sultan:${p.harga_sultan?? 0}`
+                          : `Harga:${p.harga_lite?? 0} | Stok:${p.stok?? 0}`}
                       </p>
                     </div>
-                  </div>
-
                   <div style={styles.btnGroup}>
                     <button onClick={() => editProduct(p)} style={styles.btnEdit}>Edit</button>
                     <button onClick={() => deleteProduct(p.id)} style={styles.btnDelete}>Hapus</button>
@@ -404,20 +371,16 @@ export default function Admin() {
               ))
             )}
           </div>
-
         </div>
       </div>
     </>
   )
 }
 
-// =====================
-// STYLE
-// =====================
 const styles = {
   page: { background: '#000', color: '#fff', minHeight: '100vh' },
   container: { maxWidth: 480, margin: '0 auto', padding: 16 },
-  loading: { padding: 20 },
+  loading: { padding: 20, textAlign: 'center' },
   header: { display: 'flex', justifyContent: 'space-between', marginBottom: 20 },
   h1: { fontSize: 22 },
   h2: { fontSize: 18, marginBottom: 12 },
