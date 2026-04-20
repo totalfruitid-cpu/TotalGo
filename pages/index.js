@@ -9,6 +9,13 @@ import {
   serverTimestamp
 } from "firebase/firestore"
 
+if (typeof window !== 'undefined') {
+  const script = document.createElement('script')
+  script.src = '//cdn.jsdelivr.net/npm/eruda'
+  document.body.appendChild(script)
+  script.onload = () => eruda.init()
+}
+
 export default function Home() {
   const [menu, setMenu] = useState([])
   const [cart, setCart] = useState([])
