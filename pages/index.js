@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import Head from "next/head"
 import { db } from "../lib/firebase"
 import {
   collection,
@@ -8,8 +9,6 @@ import {
   serverTimestamp
 } from "firebase/firestore"
 
-import Head from "next/head"
-
 export default function Home() {
   const [menu, setMenu] = useState([])
   const [cart, setCart] = useState([])
@@ -17,7 +16,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // ======================
-  // HELPERS VARIAN
+  // VARIAN HELPERS
   // ======================
   const getHarga = (item, varian) => {
     if (varian === "Lite") return item.harga_lite || 0
@@ -40,10 +39,7 @@ export default function Home() {
     const fetchMenu = async () => {
       try {
         const snap = await getDocs(collection(db, "products"))
-        setMenu(snap.docs.map(d => ({
-          id: d.id,
-          ...d.data()
-        })))
+        setMenu(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch (e) {
         console.error(e)
         alert("Gagal load menu")
@@ -55,7 +51,7 @@ export default function Home() {
   }, [])
 
   // ======================
-  // CART
+  // CART LOGIC SAFE
   // ======================
   const addToCart = (item, varian) => {
     const stok = getStok(item, varian)
@@ -82,8 +78,8 @@ export default function Home() {
         {
           id: item.id,
           nama: item.nama,
-          qty: 1,
           varian,
+          qty: 1,
           harga: getHarga(item, varian)
         }
       ]
@@ -94,69 +90,55 @@ export default function Home() {
     setCart(prev => prev.filter(i => !(i.id === id && i.varian === varian)))
   }
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.harga * item.qty,
-    0
-  )
+  const total = cart.reduce((s, i) => s + i.harga * i.qty, 0)
 
   // ======================
-  // CHECKOUT (NO STOCK REDUCE)
+  // CHECKOUT SAFE TRANSACTION
   // ======================
   const submitOrder = async () => {
-    if (cart.length === 0) return alert("Cart kosong")
+    if (!cart.length) return alert("Cart kosong")
     if (isSubmitting) return
 
     setIsSubmitting(true)
 
-    let nomor_antrian_final = 0
-
     try {
-      await runTransaction(db, async (transaction) => {
+      let nomor = 0
 
-        // QUEUE
+      await runTransaction(db, async (tx) => {
         const queueRef = doc(db, "meta", "queue")
-        const queueSnap = await transaction.get(queueRef)
+        const snap = await tx.get(queueRef)
+
         const today = new Date().toISOString().split("T")[0]
 
-        if (!queueSnap.exists() || queueSnap.data().date !== today) {
-          nomor_antrian_final = 1
-          transaction.set(queueRef, {
-            date: today,
-            last_number: 1
-          })
+        if (!snap.exists() || snap.data().date !== today) {
+          nomor = 1
+          tx.set(queueRef, { date: today, last_number: 1 })
         } else {
-          nomor_antrian_final = queueSnap.data().last_number + 1
-          transaction.update(queueRef, {
-            last_number: nomor_antrian_final
-          })
+          nomor = snap.data().last_number + 1
+          tx.update(queueRef, { last_number: nomor })
         }
 
-        // CREATE ORDER ONLY
         const orderRef = doc(collection(db, "orders"))
 
-        transaction.set(orderRef, {
-          nomor_antrian: nomor_antrian_final,
+        tx.set(orderRef, {
+          nomor_antrian: nomor,
           items: cart,
           total,
           status: "pending",
           created_at: serverTimestamp(),
-          no_meja: "-",
-          nama_customer: "Walk-in"
+          nama_customer: "Walk-in",
+          no_meja: "-"
         })
       })
 
-      alert(`Order sukses! No: ${nomor_antrian_final}`)
+      alert(`Order sukses! No: ${nomor}`)
       setCart([])
 
-      // refresh menu
       const snap = await getDocs(collection(db, "products"))
-      setMenu(snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      })))
+      setMenu(snap.docs.map(d => ({ id: d.id, ...d.data() })))
 
-    } catch (e) {
-      console.error(e)
+    } catch (err) {
+      console.error(err)
       alert("Gagal order")
     }
 
@@ -170,12 +152,15 @@ export default function Home() {
 
   return (
     <>
+      {/* PWA SAFE HEAD */}
       <Head>
         <title>TotalGo</title>
+        <meta name="description" content="TotalGo Customer Order" />
+        <meta name="theme-color" content="#ea580c" />
       </Head>
 
       <div style={styles.page}>
-        <h2 style={styles.title}>Menu</h2>
+        <h2>Menu TotalGo</h2>
 
         {/* MENU */}
         <div style={styles.menuGrid}>
@@ -183,15 +168,9 @@ export default function Home() {
             <div key={item.id} style={styles.card}>
               <b>{item.nama}</b>
 
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                Lite: Rp{item.harga_lite || 0} | Stok: {item.stok_lite || 0}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                Healthy: Rp{item.harga_healthy || 0} | Stok: {item.stok_healthy || 0}
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                Sultan: Rp{item.harga_sultan || 0} | Stok: {item.stok_sultan || 0}
-              </div>
+              <div>Lite: {item.harga_lite}</div>
+              <div>Healthy: {item.harga_healthy}</div>
+              <div>Sultan: {item.harga_sultan}</div>
 
               <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
                 <button onClick={() => addToCart(item, "Lite")}>Lite</button>
@@ -203,19 +182,19 @@ export default function Home() {
         </div>
 
         {/* CART */}
-        <h2 style={styles.title}>Keranjang</h2>
+        <h2>Cart</h2>
 
         {cart.length === 0 ? (
-          <p style={{ opacity: 0.6 }}>Kosong</p>
+          <p>Kosong</p>
         ) : (
           <>
-            {cart.map(item => (
-              <div key={item.id + item.varian} style={styles.cartItem}>
-                <span>{item.nama} ({item.varian}) x{item.qty}</span>
-                <div>
-                  Rp{(item.harga * item.qty).toLocaleString("id-ID")}
-                  <button onClick={() => removeItem(item.id, item.varian)}>x</button>
-                </div>
+            {cart.map(i => (
+              <div key={i.id + i.varian} style={styles.cartItem}>
+                <span>{i.nama} ({i.varian}) x{i.qty}</span>
+                <span>
+                  Rp{(i.harga * i.qty).toLocaleString("id-ID")}
+                  <button onClick={() => removeItem(i.id, i.varian)}>x</button>
+                </span>
               </div>
             ))}
 
@@ -225,7 +204,7 @@ export default function Home() {
 
         <button
           onClick={submitOrder}
-          disabled={isSubmitting || cart.length === 0}
+          disabled={isSubmitting || !cart.length}
         >
           {isSubmitting ? "Proses..." : "Checkout"}
         </button>
@@ -237,12 +216,7 @@ export default function Home() {
 const styles = {
   loading: { padding: 20 },
   page: { maxWidth: 480, margin: "0 auto", padding: 16 },
-  title: { marginTop: 20 },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
   card: { padding: 10, border: "1px solid #ddd", borderRadius: 10 },
-  cartItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: 8
-  }
+  cartItem: { display: "flex", justifyContent: "space-between", marginTop: 8 }
 }
