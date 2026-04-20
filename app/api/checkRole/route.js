@@ -23,7 +23,6 @@ export async function GET() {
     }
 
     const role = doc.data()?.role || "user"
-
     const allowed = ["admin", "kasir", "user"]
 
     if (!allowed.includes(role)) {
