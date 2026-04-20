@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import admin from '@/lib/firebaseAdmin';
+import admin from '../../../lib/firebaseAdmin'; // <-- UDAH GUE BENERIN
 
 export const runtime = 'nodejs'; // WAJIB: jangan jalan di edge
 
