@@ -1,0 +1,25 @@
+import Head from "next/head"
+
+export default function Admin() {
+  return (
+    <>
+      <Head>
+        <title>Admin TotalGo</title>
+        <meta name="description" content="Dashboard admin TotalGo" />
+
+        {/* PWA */}
+        <link rel="manifest" href="/manifest.admin.json" />
+        <meta name="theme-color" content="#ea580c" />
+
+        {/* penting biar iOS juga kebaca PWA */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Admin TotalGo" />
+      </Head>
+
+      <div style={styles.page}>
+        {/* isi admin lu */}
+      </div>
+    </>
+  )
+}
