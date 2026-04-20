@@ -1,21 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { auth, db } from "../lib/firebase"; // <-- TAMBAH db
+import { auth } from "../lib/firebase"; // db udah gak perlu di sini
 import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore"; // <-- TAMBAH INI
 import { useRouter } from "next/router";
-import Cookies from "js-cookie";
-
-const setAuthCookie = (token) => {
-  Cookies.set("authToken", token, {
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    expires: 1,
-  });
-};
+// HAPUS: import Cookies from "js-cookie";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -46,36 +37,33 @@ export default function Login() {
     }
   };
 
-  // FUNGSI BARU: BACA DARI FIRESTORE
-  const getUserRoleFromFirestore = async (uid) => {
-    const userDocRef = doc(db, "users", uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-      throw new Error("Akun belum terdaftar di database");
-    }
-
-    const data = userDocSnap.data();
-    if (!data.role) {
-      throw new Error("Akun belum di-assign role");
-    }
-
-    return data.role;
-  };
+  // HAPUS: getUserRoleFromFirestore - Kita gak cek role di client lagi
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
         if (!user) {
-          Cookies.remove("authToken");
+          // HAPUS: Cookies.remove("authToken");
+          // Cookie httpOnly gak bisa dihapus dari client
           setCheckingAuth(false);
           return;
         }
 
-        const role = await getUserRoleFromFirestore(user.uid); // <-- GANTI DI SINI
+        // Kalo user udah login, langsung tanya role ke server
         const token = await user.getIdToken();
 
-        setAuthCookie(token);
+        // 1. Set cookie httpOnly ke server dulu
+        await fetch('/api/setCookie', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+
+        // 2. Baru tanya role ke server yg aman
+        const res = await fetch('/api/checkRole');
+        if (!res.ok) throw new Error('Gagal verifikasi role');
+        const { role } = await res.json();
+
         redirectByRole(role);
 
       } catch (err) {
@@ -104,10 +92,20 @@ export default function Login() {
         password
       );
 
-      const role = await getUserRoleFromFirestore(cred.user.uid); // <-- GANTI DI SINI JUGA
       const token = await cred.user.getIdToken();
 
-      setAuthCookie(token);
+      // 1. Kirim token ke server buat bikin cookie httpOnly
+      await fetch('/api/setCookie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      // 2. Tanya role ke server, bukan ke Firestore client
+      const res = await fetch('/api/checkRole');
+      if (!res.ok) throw new Error('Gagal verifikasi role');
+      const { role } = await res.json();
+
       redirectByRole(role);
 
     } catch (err) {
@@ -170,7 +168,7 @@ export default function Login() {
           <button
             disabled={loading || redirectRef.current}
             style={{
-             ...styles.btn,
+           ...styles.btn,
               opacity: loading? 0.6 : 1,
             }}
           >
