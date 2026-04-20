@@ -4,7 +4,6 @@ import {
   collection,
   getDocs,
   doc,
-  getDoc,
   runTransaction,
   serverTimestamp
 } from "firebase/firestore"
@@ -18,6 +17,23 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // ======================
+  // HELPERS VARIAN
+  // ======================
+  const getHarga = (item, varian) => {
+    if (varian === "Lite") return item.harga_lite || 0
+    if (varian === "Healthy") return item.harga_healthy || 0
+    if (varian === "Sultan") return item.harga_sultan || 0
+    return 0
+  }
+
+  const getStok = (item, varian) => {
+    if (varian === "Lite") return item.stok_lite || 0
+    if (varian === "Healthy") return item.stok_healthy || 0
+    if (varian === "Sultan") return item.stok_sultan || 0
+    return 0
+  }
+
+  // ======================
   // LOAD MENU
   // ======================
   useEffect(() => {
@@ -29,8 +45,8 @@ export default function Home() {
           ...d.data()
         })))
       } catch (e) {
-        console.error("Gagal load menu:", e)
-        alert("Gagal load menu. Coba refresh.")
+        console.error(e)
+        alert("Gagal load menu")
       } finally {
         setLoading(false)
       }
@@ -39,33 +55,43 @@ export default function Home() {
   }, [])
 
   // ======================
-  // CART LOGIC
+  // CART
   // ======================
-  const addToCart = (item) => {
-    if (item.stok <= 0) return alert("Stok habis")
+  const addToCart = (item, varian) => {
+    const stok = getStok(item, varian)
+    if (stok <= 0) return alert("Stok habis")
 
     setCart(prev => {
-      const exist = prev.find(i => i.id === item.id)
+      const exist = prev.find(i => i.id === item.id && i.varian === varian)
 
       if (exist) {
-        if (exist.qty >= item.stok) {
+        if (exist.qty >= stok) {
           alert("Stok tidak cukup")
           return prev
         }
 
         return prev.map(i =>
-          i.id === item.id
+          i.id === item.id && i.varian === varian
             ? { ...i, qty: i.qty + 1 }
             : i
         )
       }
 
-      return [...prev, { ...item, qty: 1 }]
+      return [
+        ...prev,
+        {
+          id: item.id,
+          nama: item.nama,
+          qty: 1,
+          varian,
+          harga: getHarga(item, varian)
+        }
+      ]
     })
   }
 
-  const removeItem = (id) => {
-    setCart(prev => prev.filter(i => i.id !== id))
+  const removeItem = (id, varian) => {
+    setCart(prev => prev.filter(i => !(i.id === id && i.varian === varian)))
   }
 
   const total = cart.reduce(
@@ -74,27 +100,10 @@ export default function Home() {
   )
 
   // ======================
-  // ANTI DOUBLE CLICK
-  // ======================
-  const antiDouble = () => {
-    const last = localStorage.getItem("last_order_time")
-    const now = Date.now()
-
-    if (last && now - last < 3000) {
-      alert("Tunggu sebentar...")
-      return false
-    }
-
-    localStorage.setItem("last_order_time", now)
-    return true
-  }
-
-  // ======================
-  // CHECKOUT ATOMIC (SAFE TRANSACTION)
+  // CHECKOUT (NO STOCK REDUCE)
   // ======================
   const submitOrder = async () => {
     if (cart.length === 0) return alert("Cart kosong")
-    if (!antiDouble()) return
     if (isSubmitting) return
 
     setIsSubmitting(true)
@@ -104,36 +113,9 @@ export default function Home() {
     try {
       await runTransaction(db, async (transaction) => {
 
-        // ======================
-        // 1. VALIDATE STOCK
-        // ======================
-        const productRefs = cart.map(item =>
-          doc(db, "products", item.id)
-        )
-
-        const productSnaps = await Promise.all(
-          productRefs.map(ref => transaction.get(ref))
-        )
-
-        for (let i = 0; i < cart.length; i++) {
-          const snap = productSnaps[i]
-          const item = cart[i]
-
-          if (!snap.exists()) {
-            throw new Error(`Produk ${item.nama} tidak ditemukan`)
-          }
-
-          if (snap.data().stok < item.qty) {
-            throw new Error(`Stok ${item.nama} tidak cukup`)
-          }
-        }
-
-        // ======================
-        // 2. QUEUE NUMBER (ATOMIC)
-        // ======================
+        // QUEUE
         const queueRef = doc(db, "meta", "queue")
         const queueSnap = await transaction.get(queueRef)
-
         const today = new Date().toISOString().split("T")[0]
 
         if (!queueSnap.exists() || queueSnap.data().date !== today) {
@@ -149,21 +131,7 @@ export default function Home() {
           })
         }
 
-        // ======================
-        // 3. REDUCE STOCK
-        // ======================
-        productSnaps.forEach((snap, i) => {
-          const currentStock = snap.data().stok
-          const qty = cart[i].qty
-
-          transaction.update(snap.ref, {
-            stok: currentStock - qty
-          })
-        })
-
-        // ======================
-        // 4. CREATE ORDER
-        // ======================
+        // CREATE ORDER ONLY
         const orderRef = doc(collection(db, "orders"))
 
         transaction.set(orderRef, {
@@ -177,7 +145,7 @@ export default function Home() {
         })
       })
 
-      alert(`Order sukses! No Antrian: ${nomor_antrian_final}`)
+      alert(`Order sukses! No: ${nomor_antrian_final}`)
       setCart([])
 
       // refresh menu
@@ -188,11 +156,8 @@ export default function Home() {
       })))
 
     } catch (e) {
-      console.error("ORDER ERROR:", e)
-      alert(e.message.includes("Stok")
-        ? e.message
-        : "Gagal order. Coba lagi."
-      )
+      console.error(e)
+      alert("Gagal order")
     }
 
     setIsSubmitting(false)
@@ -201,33 +166,38 @@ export default function Home() {
   // ======================
   // UI
   // ======================
-  if (loading) return <div style={styles.loading}>Loading menu...</div>
+  if (loading) return <div style={styles.loading}>Loading...</div>
 
   return (
     <>
       <Head>
-        <title>TotalGo - Fast.Fresh.Prime</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>TotalGo</title>
       </Head>
 
       <div style={styles.page}>
-        <h2 style={styles.title}>Menu TotalGo 馃殌</h2>
+        <h2 style={styles.title}>Menu</h2>
 
         {/* MENU */}
         <div style={styles.menuGrid}>
           {menu.map(item => (
-            <div key={item.id} style={styles.card(item.stok === 0)}>
+            <div key={item.id} style={styles.card}>
               <b>{item.nama}</b>
-              <div>Rp{item.harga?.toLocaleString("id-ID")}</div>
-              <div>Stok: {item.stok}</div>
 
-              <button
-                onClick={() => addToCart(item)}
-                disabled={item.stok === 0}
-                style={styles.btn(item.stok === 0)}
-              >
-                {item.stok === 0 ? "Habis" : "+ Add"}
-              </button>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                Lite: Rp{item.harga_lite || 0} | Stok: {item.stok_lite || 0}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                Healthy: Rp{item.harga_healthy || 0} | Stok: {item.stok_healthy || 0}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>
+                Sultan: Rp{item.harga_sultan || 0} | Stok: {item.stok_sultan || 0}
+              </div>
+
+              <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+                <button onClick={() => addToCart(item, "Lite")}>Lite</button>
+                <button onClick={() => addToCart(item, "Healthy")}>Healthy</button>
+                <button onClick={() => addToCart(item, "Sultan")}>Sultan</button>
+              </div>
             </div>
           ))}
         </div>
@@ -236,92 +206,43 @@ export default function Home() {
         <h2 style={styles.title}>Keranjang</h2>
 
         {cart.length === 0 ? (
-          <p style={{ opacity: 0.6, textAlign: "center" }}>
-            Keranjang kosong
-          </p>
+          <p style={{ opacity: 0.6 }}>Kosong</p>
         ) : (
           <>
             {cart.map(item => (
-              <div key={item.id} style={styles.cartItem}>
-                <span>{item.nama} x{item.qty}</span>
+              <div key={item.id + item.varian} style={styles.cartItem}>
+                <span>{item.nama} ({item.varian}) x{item.qty}</span>
                 <div>
                   Rp{(item.harga * item.qty).toLocaleString("id-ID")}
-                  <button onClick={() => removeItem(item.id)} style={styles.del}>x</button>
+                  <button onClick={() => removeItem(item.id, item.varian)}>x</button>
                 </div>
               </div>
             ))}
 
-            <h3 style={styles.total}>
-              Total: Rp{total.toLocaleString("id-ID")}
-            </h3>
+            <h3>Total: Rp{total.toLocaleString("id-ID")}</h3>
           </>
         )}
 
-        {/* CHECKOUT */}
         <button
           onClick={submitOrder}
           disabled={isSubmitting || cart.length === 0}
-          style={styles.checkout(isSubmitting || cart.length === 0)}
         >
-          {isSubmitting ? "Memproses..." : "Checkout"}
+          {isSubmitting ? "Proses..." : "Checkout"}
         </button>
       </div>
     </>
   )
 }
 
-// ======================
-// STYLES
-// ======================
 const styles = {
   loading: { padding: 20 },
-  page: { maxWidth: 480, margin: "0 auto", padding: 16, fontFamily: "sans-serif" },
-  title: { marginTop: 20, fontSize: 20 },
+  page: { maxWidth: 480, margin: "0 auto", padding: 16 },
+  title: { marginTop: 20 },
   menuGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-
-  card: (disabled) => ({
-    padding: 10,
-    border: "1px solid #ddd",
-    borderRadius: 10,
-    opacity: disabled ? 0.5 : 1
-  }),
-
-  btn: (disabled) => ({
-    width: "100%",
-    marginTop: 5,
-    padding: 8,
-    background: disabled ? "#ccc" : "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8
-  }),
-
+  card: { padding: 10, border: "1px solid #ddd", borderRadius: 10 },
   cartItem: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "8px 0"
-  },
-
-  del: {
-    marginLeft: 10,
-    border: "none",
-    background: "#eee",
-    borderRadius: 5,
-    cursor: "pointer"
-  },
-
-  total: {
-    textAlign: "right",
-    marginTop: 10
-  },
-
-  checkout: (disabled) => ({
-    width: "100%",
-    padding: 14,
-    marginTop: 15,
-    background: disabled ? "#ccc" : "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: 10
-  })
+    marginTop: 8
+  }
 }
