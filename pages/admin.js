@@ -31,6 +31,7 @@ export default function Admin() {
     harga_lite: '',
     harga_healthy: '',
     harga_sultan: '',
+    stok: '',
     stok_lite: '',
     stok_healthy: '',
     stok_sultan: '',
@@ -39,27 +40,25 @@ export default function Admin() {
   })
 
   // =====================
-  // FIX BUG #1: PISAH useEffect BIAR GAK MEMORY LEAK
+  // useEffect 1: Cek role ke server via cookie httpOnly
   // =====================
-
-  // useEffect 1: Satpam utama. Cek role ke server via cookie httpOnly
   useEffect(() => {
     fetch('/api/checkRole')
-   .then(res => {
+     .then(res => {
         if (!res.ok) throw new Error('Unauthorized')
         return res.json()
       })
-   .then(data => {
+     .then(data => {
         if (data.role!== 'admin') {
           router.replace('/kasir') // bukan admin -> tendang
         } else {
           setLoading(false) // role aman -> baru boleh render halaman
         }
       })
-   .catch(() => router.replace('/')) // token invalid/expired -> tendang ke login
+     .catch(() => router.replace('/')) // token invalid/expired -> tendang ke login
   }, [router])
 
-  // useEffect 2: Listener auth Firebase. Jalan terpisah.
+  // useEffect 2: Listener auth Firebase
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -69,12 +68,12 @@ export default function Admin() {
         router.replace('/')
       }
     })
-    return () => unsub() // <-- Bersihin listener biar gak numpuk
+    return () => unsub()
   }, [router])
 
   const handleLogout = async () => {
-    await fetch('/api/logout', { method: 'POST' }) // Hapus cookie httpOnly di server
-    await signOut(auth) // Logout Firebase client
+    await fetch('/api/logout', { method: 'POST' })
+    await signOut(auth)
     window.location.href = '/'
   }
 
@@ -85,7 +84,7 @@ export default function Admin() {
     const snap = await getDocs(collection(db, 'products'))
     const data = snap.docs.map(d => ({
       id: d.id,
-   ...d.data()
+     ...d.data()
     }))
     data.sort((a, b) =>
       (b.created_at?.toMillis?.() || 0) -
@@ -108,9 +107,9 @@ export default function Admin() {
   // =====================
   const buildPayload = () => {
     const gambar = form.gambar_url?.trim()
-   ? (form.gambar_url.startsWith("http")
+     ? (form.gambar_url.startsWith("http")
        ? form.gambar_url
-          : BASE_URL_GAMBAR + form.gambar_url)
+        : BASE_URL_GAMBAR + form.gambar_url)
       : ""
 
     const toFirestoreNum = (val) => {
@@ -127,7 +126,7 @@ export default function Admin() {
 
     if (form.punya_varian) {
       return {
-    ...base,
+       ...base,
         harga_lite: toFirestoreNum(form.harga_lite),
         harga_healthy: toFirestoreNum(form.harga_healthy),
         harga_sultan: toFirestoreNum(form.harga_sultan),
@@ -138,7 +137,7 @@ export default function Admin() {
     }
 
     return {
-  ...base,
+     ...base,
       harga_lite: toFirestoreNum(form.harga_lite),
       stok: toFirestoreNum(form.stok)
     }
@@ -156,7 +155,7 @@ export default function Admin() {
 
     if (form.punya_varian) {
       const adaHargaDiisi = [form.harga_lite, form.harga_healthy, form.harga_sultan]
-    .some(h => h!== '' && h!== null)
+       .some(h => h!== '' && h!== null)
       if (!adaHargaDiisi) {
         alert("Minimal isi 1 harga varian")
         return
@@ -195,6 +194,7 @@ export default function Admin() {
       harga_lite: '',
       harga_healthy: '',
       harga_sultan: '',
+      stok: '',
       stok_lite: '',
       stok_healthy: '',
       stok_sultan: '',
@@ -228,7 +228,7 @@ export default function Admin() {
   }
 
   // =====================
-  // FIX BUG #2: GUARD RENDER BIAR GAK KEDIP
+  // GUARD RENDER
   // =====================
   if (loading) return <div style={styles.loading}>Checking access...</div>
 
@@ -348,7 +348,7 @@ export default function Admin() {
             ) : (
               products.map(p => (
                 <div key={p.id} style={styles.productItem}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1 }}>
                     <img
                       src={(p.gambar_url?.trim() || PLACEHOLDER_IMG)}
                       style={styles.img}
@@ -359,7 +359,7 @@ export default function Admin() {
                       <b>{p.nama}</b>
                       <p style={styles.desc}>
                         {p.punya_varian
-                      ? `Lite:${p.harga_lite?? 0} | Healthy:${p.harga_healthy?? 0} | Sultan:${p.harga_sultan?? 0}`
+                         ? `Lite:${p.harga_lite?? 0} | Healthy:${p.harga_healthy?? 0} | Sultan:${p.harga_sultan?? 0}`
                           : `Harga:${p.harga_lite?? 0} | Stok:${p.stok?? 0}`}
                       </p>
                     </div>
@@ -387,7 +387,7 @@ const styles = {
   email: { fontSize: 12, color: '#888' },
   card: { background: '#111', padding: 16, borderRadius: 16, marginBottom: 16 },
   input: { width: '100%', padding: 10, marginBottom: 10, background: '#222', color: '#fff', borderRadius: 8, border: '1px solid #333' },
-  checkboxLabel: { display: 'flex', gap: 8, marginBottom: 10 },
+  checkboxLabel: { display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   btnGroup: { display: 'flex', gap: 8 },
   btnPrimary: { flex: 1, padding: 10, background: '#fff', color: '#000', borderRadius: 8, border: 'none', cursor: 'pointer' },
@@ -395,8 +395,8 @@ const styles = {
   btnLogout: { padding: 8, background: '#222', color: '#fff', borderRadius: 8, border: 'none', cursor: 'pointer' },
   btnEdit: { padding: 6, background: '#333', color: '#fff', borderRadius: 6, border: 'none', cursor: 'pointer' },
   btnDelete: { padding: 6, background: '#900', color: '#fff', borderRadius: 6, border: 'none', cursor: 'pointer' },
-  productItem: { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #222' },
+  productItem: { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #222', alignItems: 'center' },
   img: { width: 50, height: 50, objectFit: 'cover', borderRadius: 10 },
-  desc: { fontSize: 12, color: '#888' },
+  desc: { fontSize: 12, color: '#888', margin: 0 },
   empty: { textAlign: 'center', color: '#666' }
 }
