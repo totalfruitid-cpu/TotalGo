@@ -1,18 +1,63 @@
-# env (SENSITIVE)
+# =========================
+# ENV (SENSITIF - WAJIB)
+# =========================
 .env
 .env.local
 .env.development.local
+.env.test.local
 .env.production.local
 
-# dependencies
+# =========================
+# DEPENDENCIES
+# =========================
 node_modules
-
-# next build
-.next
-
-# logs
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# OS
+# =========================
+# NEXT.JS
+# =========================
+.next
+out
+build
+
+# =========================
+# FIREBASE
+# =========================
+.firebase
+firebase-debug.log
+
+# =========================
+# VERCEL (kalau deploy)
+# =========================
+.vercel
+
+# =========================
+# OS FILES
+# =========================
 .DS_Store
+Thumbs.db
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode
+.idea
+
+# =========================
+# TYPESCRIPT
+# =========================
+*.tsbuildinfo
+
+# =========================
+# TEST / COVERAGE
+# =========================
+coverage
+
+# =========================
+# OPTIONAL CACHE
+# =========================
+.cache
+.eslintcache
