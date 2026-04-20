@@ -1,28 +1,43 @@
 import { NextResponse } from 'next/server';
-import admin from '@/lib/firebaseAdmin';
+import { cookies } from 'next/headers';
+import admin from '../../../lib/firebaseAdmin'; // <-- UDAH GUE BENERIN
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const { token } = await req.json();
+    const { token } = await request.json();
     if (!token) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 400 });
+      return NextResponse.json({ error: 'No token' }, { status: 400 });
     }
 
-    // Verifikasi token beneran dari Firebase, bukan token editan
-    await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;
 
-    const response = NextResponse.json({ success: true });
-    
-    // Ini kuncinya: httpOnly biar gak bisa diedit dari DevTools
-    response.cookies.set('authToken', token, {
-      httpOnly: true, 
+    const userDoc = await admin.firestore().collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    const role = userDoc.data().role;
+    if (!role) {
+      return NextResponse.json({ error: 'Role not assigned' }, { status: 403 });
+    }
+
+    cookies().set('authToken', token, {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 5,
       path: '/',
-      maxAge: 60 * 60 * 24 * 5, // 5 hari
+    });
+    
+    cookies().set('userRole', role, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 5,
+      path: '/',
     });
 
-    return response;
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('SetCookie Error:', err);
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
