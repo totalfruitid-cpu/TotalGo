@@ -1,32 +1,37 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import admin from '../../../lib/firebaseAdmin'
+import admin from "@/lib/firebaseAdmin"
+import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
 
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
+export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    const session = cookies().get('session')?.value
+    const token = cookies().get("session")?.value
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // verifikasi session cookie
-    const decoded = await admin.auth().verifySessionCookie(session, true)
+    const decoded = await admin.auth().verifySessionCookie(token, true)
     const uid = decoded.uid
 
-    // ambil role asli dari firestore
-    const userDoc = await admin.firestore().collection('users').doc(uid).get()
-    if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const doc = await admin.firestore().collection("users").doc(uid).get()
+
+    if (!doc.exists) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const role = userDoc.data().role
+    const role = doc.data()?.role || "user"
+
+    const allowed = ["admin", "kasir", "user"]
+    if (!allowed.includes(role)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 403 })
+    }
 
     return NextResponse.json({ role })
+
   } catch (err) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    console.error("checkRole error:", err)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 }
