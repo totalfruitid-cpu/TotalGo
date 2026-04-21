@@ -1,41 +1,80 @@
-import { auth } from "../lib/firebase"
-import { signInWithEmailAndPassword } from "firebase/auth"
+import { useState } from "react"
 import { useRouter } from "next/router"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "../lib/firebase"
 
 export default function Login() {
   const router = useRouter()
-  
-  const login = async (email, password) => {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleLogin = async () => {
+    if (loading) return
+    setLoading(true)
+
     try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password)
+      // 🔥 Firebase login
+      const userCred = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      )
+
       const idToken = await userCred.user.getIdToken()
 
-      // 1. Tuker ke session cookie
-      const loginRes = await fetch("/api/sessionLogin", {
+      // 🔥 ONE REQUEST ONLY (cookie + role)
+      const res = await fetch("/api/sessionLogin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken })
+        body: JSON.stringify({ idToken }),
       })
-      if (!loginRes.ok) throw new Error("Gagal membuat session")
 
-      // 2. Ambil role pake cookie
-      const res = await fetch("/api/checkRole", {
-        method: "GET",
-        credentials: "include"
-      })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Gagal ambil role")
 
-      // 3. Redirect
-      if (data.role === "kasir") router.replace("/kasir")
-      else if (data.role === "admin") router.replace("/admin")
-      else router.replace("/store")
+      if (!res.ok) {
+        throw new Error(data.error || "Login gagal")
+      }
 
+      // 🔥 direct redirect based on role
+      if (data.role === "admin") {
+        router.replace("/admin")
+      } else if (data.role === "kasir") {
+        router.replace("/kasir")
+      } else {
+        router.replace("/store")
+      }
     } catch (err) {
-      console.error("LOGIN ERROR:", err)
       alert(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
-  return ( /* ... form login lu */ )
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleLogin()
+      }}
+    >
+      <input
+        type="email"
+        placeholder="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <input
+        type="password"
+        placeholder="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <button type="submit" disabled={loading}>
+        {loading ? "Loading..." : "Login"}
+      </button>
+    </form>
+  )
 }
