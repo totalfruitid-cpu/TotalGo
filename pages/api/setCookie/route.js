@@ -12,39 +12,29 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "No token" })
     }
 
-    // verify firebase token
     const decoded = await admin.auth().verifyIdToken(idToken)
     const uid = decoded.uid
 
-    // ambil role user
     const userDoc = await admin.firestore().collection("users").doc(uid).get()
 
     if (!userDoc.exists) {
       return res.status(404).json({ error: "User not found" })
     }
 
-    const role = userDoc.data()?.role || "user"
-
-    // 🔥 CREATE SESSION COOKIE (AMAN & STABIL)
-    const expiresIn = 60 * 60 * 24 * 7 * 1000 // 7 hari
+    const role = userDoc.data().role || "user"
 
     const sessionCookie = await admin
       .auth()
-      .createSessionCookie(idToken, { expiresIn })
+      .createSessionCookie(idToken, { expiresIn: 60 * 60 * 24 * 7 * 1000 })
 
-    // 🔥 SET COOKIE
     res.setHeader(
       "Set-Cookie",
       `session=${sessionCookie}; Path=/; HttpOnly; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`
     )
 
-    return res.status(200).json({
-      success: true,
-      role
-    })
+    return res.status(200).json({ role })
 
   } catch (err) {
-    console.error("SETCOOKIE ERROR:", err)
     return res.status(401).json({ error: "Invalid token" })
   }
 }
