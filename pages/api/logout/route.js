@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+export default async function handler(req, res) {
+  try {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" })
+    }
 
-export async function POST() {
-  const cookieStore = cookies()
+    // 🔥 HAPUS COOKIE SESSION
+    res.setHeader(
+      "Set-Cookie",
+      "session=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax"
+    )
 
-  // 🔥 ini yang dipakai middleware & checkRole
-  cookieStore.delete('session')
+    return res.status(200).json({ success: true })
 
-  return NextResponse.json({ success: true })
+  } catch (err) {
+    return res.status(500).json({ error: "Logout failed" })
+  }
 }
