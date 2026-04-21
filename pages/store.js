@@ -1,4 +1,4 @@
-// pages/store.js - VERSI SULTAN SHOPEEFOOD FINAL
+// pages/store.js - VERSI SULTAN BACA STRUKTUR LU
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
@@ -20,21 +20,26 @@ export default function Store() {
         const querySnapshot = await getDocs(collection(db, "products"))
         const data = querySnapshot.docs.map((doc) => {
           const p = doc.data() || {}
-          let varianFix = []
-          if (Array.isArray(p.varian) && p.varian.length > 0) {
-            varianFix = p.varian.map(v => ({
-              nama: String(v?.nama || "Varian"),
-              harga: Number(v?.harga) || 0
-            }))
-          } else {
-            varianFix = [{ nama: "Regular", harga: Number(p?.harga) || 0 }]
+
+          // BACA STRUKTUR PUNYA LU: harga_lite, harga_healthy, harga_sultan
+          const varianFix = []
+          if (p.punya_varian) {
+            if (p.harga_lite) varianFix.push({ nama: "Lite", harga: Number(p.harga_lite) || 0, stok: Number(p.stok_lite) || 0 })
+            if (p.harga_healthy) varianFix.push({ nama: "Healthy", harga: Number(p.harga_healthy) || 0, stok: Number(p.stok_healthy) || 0 })
+            if (p.harga_sultan) varianFix.push({ nama: "Sultan", harga: Number(p.harga_sultan) || 0, stok: Number(p.stok_sultan) || 0 })
           }
+
+          // Kalo gak punya varian, pake harga & stok utama
+          if (varianFix.length === 0) {
+            varianFix.push({ nama: "Regular", harga: Number(p.harga) || 0, stok: Number(p.stok) || 0 })
+          }
+
           return {
             id: doc.id,
             nama: String(p.nama || "Produk Misterius"),
-            stok: Number(p.stok) || 0,
-            img: String(p.img || "https://placehold.co/200x200/f97316/fff?text=TotalGo"),
-            varian: varianFix
+            img: String(p.gambar_url || "https://placehold.co/200x200/f97316/fff?text=TotalGo"),
+            varian: varianFix,
+            totalStok: varianFix.reduce((sum, v) => sum + v.stok, 0)
           }
         })
         setProducts(data)
@@ -52,6 +57,11 @@ export default function Store() {
     return product?.varian?.[index]?.harga || 0
   }
 
+  const getStokVarian = (product) => {
+    const index = selectedVarian[product.id] || 0
+    return product?.varian?.[index]?.stok || 0
+  }
+
   const getNamaVarian = (product) => {
     const index = selectedVarian[product.id] || 0
     return product?.varian?.[index]?.nama || "Regular"
@@ -61,16 +71,17 @@ export default function Store() {
     if (!product) return
     const harga = getHarga(product)
     const namaVarian = getNamaVarian(product)
+    const stokVarian = getStokVarian(product)
     const cartKey = `${product.id}_${namaVarian}`
-    const stok = product.stok || 0
+
     setCart((prev) => {
       const qty = prev[cartKey]?.qty || 0
-      if (qty >= stok) {
-        alert(`Stok ${product.nama} abis bos`)
+      if (qty >= stokVarian) {
+        alert(`Stok ${product.nama} ${namaVarian} tinggal ${stokVarian} bos`)
         return prev
       }
       return {
-   ...prev,
+  ...prev,
         [cartKey]: { id: product.id, nama: product.nama, varian: namaVarian, harga: harga, img: product.img, qty: qty + 1 },
       }
     })
@@ -109,7 +120,7 @@ export default function Store() {
       setCart({}); setNama(""); setAlamat(""); setNoHp("")
     } catch (err) {
       console.error("Gagal checkout:", err)
-      alert("Gagal checkout. Cek harga produk di Firestore, harus > 0.")
+      alert("Gagal checkout. Cek Rules: total > 0")
     } finally {
       setLoadingOrder(false)
     }
@@ -127,27 +138,23 @@ export default function Store() {
         </header>
         <h2 style={styles.title}>🔥 Menu Andalan</h2>
         <div style={styles.grid}>
-          {products.length === 0? (
-            <p style={{gridColumn: "1/-1", textAlign: "center"}}>Menu masih kosong bos. Tambahin di Firestore dulu.</p>
-          ) : (
-            products.map((p) => (
-              <div key={p.id} style={styles.card}>
-                <img src={p.img} alt={p.nama} style={styles.cardImg} />
-                <div style={styles.cardBody}>
-                  <h3 style={styles.cardTitle}>{p.nama}</h3>
-                  <select style={styles.select} value={selectedVarian[p.id] || 0} onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}>
-                    {p.varian.map((v, i) => (<option key={i} value={i}>{v.nama} - Rp{v.harga.toLocaleString("id-ID")}</option>))}
-                  </select>
-                  <div style={styles.cardFooter}>
-                    <span style={styles.price}>Rp{getHarga(p).toLocaleString("id-ID")}</span>
-                    <button style={p.stok === 0 || getHarga(p) === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={p.stok === 0 || getHarga(p) === 0}>
-                      {p.stok === 0? "Habis" : getHarga(p) === 0? "Set Harga" : "+ Keranjang"}
-                    </button>
-                  </div>
+          {products.map((p) => (
+            <div key={p.id} style={styles.card}>
+              <img src={p.img} alt={p.nama} style={styles.cardImg} />
+              <div style={styles.cardBody}>
+                <h3 style={styles.cardTitle}>{p.nama}</h3>
+                <select style={styles.select} value={selectedVarian[p.id] || 0} onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}>
+                  {p.varian.map((v, i) => (<option key={i} value={i}>{v.nama} - Rp{v.harga.toLocaleString("id-ID")} | Stok: {v.stok}</option>))}
+                </select>
+                <div style={styles.cardFooter}>
+                  <span style={styles.price}>Rp{getHarga(p).toLocaleString("id-ID")}</span>
+                  <button style={getStokVarian(p) === 0 || getHarga(p) === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={getStokVarian(p) === 0 || getHarga(p) === 0}>
+                    {getStokVarian(p) === 0? "Habis" : "+ Keranjang"}
+                  </button>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
         <div style={styles.cartSection}>
           <h2 style={styles.title}>🛒 Keranjang Lu</h2>
