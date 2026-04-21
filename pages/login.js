@@ -2,7 +2,6 @@ import { useState } from "react"
 import { useRouter } from "next/router"
 import { signInWithEmailAndPassword } from "firebase/auth"
 import { auth } from "../lib/firebase"
-import Head from "next/head"
 
 export default function Login() {
   const router = useRouter()
@@ -18,41 +17,31 @@ export default function Login() {
     setError("")
 
     try {
-      if (!email.includes("@") || password.length < 6) {
-        throw new Error("Email atau password tidak valid")
-      }
-
-      // 1. Login Firebase
+      // 1. Firebase login
       const userCred = await signInWithEmailAndPassword(auth, email, password)
       const idToken = await userCred.user.getIdToken(true)
 
-      // 2. Set session cookie (server)
-      const res = await fetch("/api/setCookie", {
+      // 2. kirim ke API login (INI SOURCE OF TRUTH)
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken })
+        body: JSON.stringify({ idToken }),
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Gagal set session")
+        throw new Error(data.error || "Login gagal")
       }
 
-      // 3. Ambil role dari server (SOURCE OF TRUTH)
-      const roleRes = await fetch("/api/checkRole")
-      const roleData = await roleRes.json()
-
-      if (!roleRes.ok) {
-        throw new Error(roleData.error || "Gagal ambil role")
+      // 3. redirect berdasarkan role
+      if (data.role === "admin") {
+        router.replace("/admin")
+      } else if (data.role === "kasir") {
+        router.replace("/kasir")
+      } else {
+        router.replace("/unauthorized")
       }
-
-      // 4. Redirect berdasarkan role
-      const routes = {
-        admin: "/admin",
-        kasir: "/kasir"
-      }
-
-      router.replace(routes[roleData.role] || "/")
 
     } catch (err) {
       setError(err.message || "Login gagal")
@@ -62,41 +51,35 @@ export default function Login() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Login - TotalGo</title>
-      </Head>
+    <div style={styles.container}>
+      <form onSubmit={handleLogin} style={styles.form}>
+        <h2>Login</h2>
 
-      <div style={styles.container}>
-        <form onSubmit={handleLogin} style={styles.form}>
-          <h2>Login</h2>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={styles.input}
+          disabled={loading}
+        />
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={styles.input}
-            disabled={loading}
-          />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={styles.input}
+          disabled={loading}
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={styles.input}
-            disabled={loading}
-          />
+        {error && <p style={styles.error}>{error}</p>}
 
-          {error && <p style={styles.error}>{error}</p>}
-
-          <button style={styles.button} disabled={loading}>
-            {loading ? "Loading..." : "Login"}
-          </button>
-        </form>
-      </div>
-    </>
+        <button style={styles.button} disabled={loading}>
+          {loading ? "Loading..." : "Login"}
+        </button>
+      </form>
+    </div>
   )
 }
 
@@ -106,22 +89,22 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    background: "#f5f5f5",
     fontFamily: "sans-serif",
-    background: "#f5f5f5"
   },
   form: {
     padding: 24,
     background: "white",
     borderRadius: 12,
     width: 320,
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)"
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
   },
   input: {
     width: "100%",
     padding: 10,
     marginBottom: 10,
     borderRadius: 8,
-    border: "1px solid #ddd"
+    border: "1px solid #ddd",
   },
   button: {
     width: "100%",
@@ -130,10 +113,10 @@ const styles = {
     color: "#fff",
     border: "none",
     borderRadius: 8,
-    cursor: "pointer"
+    cursor: "pointer",
   },
   error: {
     color: "red",
-    fontSize: 12
-  }
+    fontSize: 12,
+  },
 }
