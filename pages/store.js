@@ -7,6 +7,7 @@ export default function Store() {
   const [cart, setCart] = useState([])
   const [table, setTable] = useState("")
   const [loading, setLoading] = useState(true)
+  const [checkingOut, setCheckingOut] = useState(false)
 
   useEffect(() => {
     loadProducts()
@@ -14,20 +15,21 @@ export default function Store() {
 
   const loadProducts = async () => {
     const snap = await getDocs(collection(db, "products"))
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    setProducts(data)
+    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     setLoading(false)
   }
 
-  const getPrice = (p, variant) => {
+  // ================= VARIANT PRICE =================
+  const getPrice = (p, v) => {
     if (!p.punya_varian) return p.harga_lite || 0
-    if (variant === "lite") return p.harga_lite
-    if (variant === "healthy") return p.harga_healthy
-    if (variant === "sultan") return p.harga_sultan
-    return p.harga_lite
+    if (v === "lite") return p.harga_lite
+    if (v === "healthy") return p.harga_healthy
+    if (v === "sultan") return p.harga_sultan
+    return 0
   }
 
-  const addToCart = (p, variant = "lite") => {
+  // ================= ADD CART =================
+  const addToCart = (p, variant) => {
     const price = getPrice(p, variant)
 
     setCart(prev => {
@@ -54,71 +56,168 @@ export default function Store() {
     })
   }
 
-  const removeItem = (id, variant) => {
-    setCart(cart.filter(i => !(i.id === id && i.variant === variant)))
-  }
-
-  const total = cart.reduce((a, b) => a + b.harga * b.qty, 0)
-
+  // ================= CHECKOUT FIX =================
   const checkout = async () => {
-    if (!table || cart.length === 0) return alert("Isi meja & cart")
+    if (!table) return alert("Isi nomor meja dulu")
+    if (cart.length === 0) return alert("Cart kosong")
 
-    await addDoc(collection(db, "orders"), {
-      meja: table,
-      items: cart,
-      total,
-      status: "pending",
-      createdAt: serverTimestamp()
-    })
+    try {
+      setCheckingOut(true)
 
-    setCart([])
-    setTable("")
-    alert("Order terkirim")
+      await addDoc(collection(db, "orders"), {
+        meja: table,
+        items: cart,
+        total: cart.reduce((a, b) => a + b.harga * b.qty, 0),
+        status: "pending",
+        createdAt: serverTimestamp()
+      })
+
+      setCart([])
+      setTable("")
+      alert("Order berhasil dikirim")
+    } catch (err) {
+      console.error("Checkout error:", err)
+      alert("Checkout gagal")
+    } finally {
+      setCheckingOut(false)
+    }
   }
 
   if (loading) return <div>Loading...</div>
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>STORE</h2>
+    <div style={styles.page}>
+      <div style={styles.container}>
 
-      <input
-        placeholder="Meja"
-        value={table}
-        onChange={e => setTable(e.target.value)}
-      />
+        {/* HEADER */}
+        <h1 style={styles.title}>TOTALGO STORE</h1>
 
-      <div>
-        {products.map(p => (
-          <div key={p.id} style={{ margin: 10, padding: 10, border: "1px solid #ccc" }}>
-            <h3>{p.nama}</h3>
+        {/* TABLE INPUT */}
+        <input
+          placeholder="Nomor Meja"
+          value={table}
+          onChange={(e) => setTable(e.target.value)}
+          style={styles.input}
+        />
 
-            {p.punya_varian ? (
-              <>
-                <button onClick={() => addToCart(p, "lite")}>Lite</button>
-                <button onClick={() => addToCart(p, "healthy")}>Healthy</button>
-                <button onClick={() => addToCart(p, "sultan")}>Sultan</button>
-              </>
-            ) : (
-              <button onClick={() => addToCart(p, "lite")}>Add</button>
-            )}
-          </div>
-        ))}
-      </div>
+        {/* PRODUCTS */}
+        <div style={styles.grid}>
+          {products.map(p => (
+            <div key={p.id} style={styles.card}>
+              <h3>{p.nama}</h3>
 
-      <hr />
+              {/* VARIANT BOX */}
+              {p.punya_varian ? (
+                <div style={styles.variantBox}>
+                  <button onClick={() => addToCart(p, "lite")}>
+                    Lite<br />{p.harga_lite}
+                  </button>
 
-      <h3>Cart</h3>
-      {cart.map((c, i) => (
-        <div key={i}>
-          {c.qty}x {c.nama} ({c.variant}) - {c.harga}
-          <button onClick={() => removeItem(c.id, c.variant)}>x</button>
+                  <button onClick={() => addToCart(p, "healthy")}>
+                    Healthy<br />{p.harga_healthy}
+                  </button>
+
+                  <button onClick={() => addToCart(p, "sultan")}>
+                    Sultan<br />{p.harga_sultan}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => addToCart(p, "lite")}>
+                  Add
+                </button>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
 
-      <h3>Total: Rp{total.toLocaleString()}</h3>
+        {/* CART */}
+        <div style={styles.cart}>
+          <h3>Cart</h3>
 
-      <button onClick={checkout}>Checkout</button>
+          {cart.map((c, i) => (
+            <div key={i}>
+              {c.qty}x {c.nama} ({c.variant}) - Rp{c.harga}
+            </div>
+          ))}
+
+          <h3>
+            Total: Rp{" "}
+            {cart.reduce((a, b) => a + b.harga * b.qty, 0).toLocaleString()}
+          </h3>
+
+          <button
+            onClick={checkout}
+            disabled={checkingOut}
+            style={styles.checkoutBtn}
+          >
+            {checkingOut ? "Processing..." : "Checkout"}
+          </button>
+        </div>
+
+      </div>
     </div>
   )
+}
+
+/* ================= STYLE ================= */
+const styles = {
+  page: {
+    background: "#0f172a",
+    color: "#fff",
+    minHeight: "100vh",
+    padding: 16,
+    fontFamily: "sans-serif",
+  },
+
+  container: {
+    maxWidth: 700,
+    margin: "0 auto",
+  },
+
+  title: {
+    textAlign: "center",
+    marginBottom: 10,
+  },
+
+  input: {
+    width: "100%",
+    padding: 10,
+    marginBottom: 16,
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+  },
+
+  card: {
+    background: "#1e293b",
+    padding: 12,
+    borderRadius: 10,
+  },
+
+  variantBox: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 5,
+  },
+
+  cart: {
+    marginTop: 20,
+    background: "#111827",
+    padding: 12,
+    borderRadius: 10,
+  },
+
+  checkoutBtn: {
+    width: "100%",
+    padding: 12,
+    marginTop: 10,
+    background: "#22c55e",
+    border: "none",
+    color: "#000",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
 }
