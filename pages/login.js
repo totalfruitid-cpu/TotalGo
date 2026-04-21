@@ -1,36 +1,41 @@
-const login = async () => {
-  try {
-    const userCred = await signInWithEmailAndPassword(auth, email, password)
+import { auth } from "../lib/firebase"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { useRouter } from "next/router"
 
-    const idToken = await userCred.user.getIdToken()
+export default function Login() {
+  const router = useRouter()
+  
+  const login = async (email, password) => {
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password)
+      const idToken = await userCred.user.getIdToken()
 
-    // 🔥 WAJIB: bikin session cookie
-    await fetch("/api/sessionLogin", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ idToken })
-    })
+      // 1. Tuker ke session cookie
+      const loginRes = await fetch("/api/sessionLogin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      })
+      if (!loginRes.ok) throw new Error("Gagal membuat session")
 
-    // 🔥 cek role
-    const res = await fetch("/api/checkRole", {
-      headers: {
-        Authorization: `Bearer ${idToken}`
-      }
-    })
+      // 2. Ambil role pake cookie
+      const res = await fetch("/api/checkRole", {
+        method: "GET",
+        credentials: "include"
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Gagal ambil role")
 
-    const data = await res.json()
+      // 3. Redirect
+      if (data.role === "kasir") router.replace("/kasir")
+      else if (data.role === "admin") router.replace("/admin")
+      else router.replace("/store")
 
-    if (data.role === "kasir") {
-      router.push("/kasir")
-    } else if (data.role === "admin") {
-      router.push("/admin")
-    } else {
-      router.push("/store")
+    } catch (err) {
+      console.error("LOGIN ERROR:", err)
+      alert(err.message)
     }
-
-  } catch (err) {
-    alert(err.message)
   }
+
+  return ( /* ... form login lu */ )
 }
