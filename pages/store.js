@@ -81,7 +81,7 @@ export default function Store() {
         return prev
       }
       return {
-  ...prev,
+ ...prev,
         [cartKey]: { id: product.id, nama: product.nama, varian: namaVarian, harga: harga, img: product.img, qty: qty + 1 },
       }
     })
@@ -114,7 +114,9 @@ export default function Store() {
         id: item.id, nama: item.nama, varian: item.varian, harga: item.harga, qty: item.qty,
       }))
       await addDoc(collection(db, "orders"), {
-        nama, alamat, noHp, items, total, ongkir, grandTotal, metode, status: "baru", createdAt: serverTimestamp(),
+        nama, alamat, noHp, items, total, ongkir, grandTotal, metode,
+        status: "pending", // GUA GANTI DARI "baru"
+        waktu: serverTimestamp(), // GUA GANTI DARI createdAt
       })
       alert("Order berhasil! Driver otw 🛵")
       setCart({}); setNama(""); setAlamat(""); setNoHp("")
