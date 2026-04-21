@@ -1,14 +1,15 @@
-import { NextResponse } from 'next/server'
-import admin from '../../../lib/firebaseAdmin'
+import admin from "../../../lib/firebaseAdmin"
 
-export const runtime = 'nodejs'
-
-export async function POST(request) {
+export default async function handler(req, res) {
   try {
-    const { idToken } = await request.json()
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Method not allowed" })
+    }
+
+    const { idToken } = req.body
 
     if (!idToken) {
-      return NextResponse.json({ error: 'No token' }, { status: 400 })
+      return res.status(400).json({ error: "No token" })
     }
 
     // verify token
@@ -16,29 +17,24 @@ export async function POST(request) {
     const uid = decoded.uid
 
     // ambil role dari firestore
-    const userDoc = await admin.firestore().collection('users').doc(uid).get()
+    const userDoc = await admin.firestore().collection("users").doc(uid).get()
 
     if (!userDoc.exists) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return res.status(404).json({ error: "User not found" })
     }
 
-    const role = userDoc.data()?.role || 'user'
+    const role = userDoc.data()?.role || "user"
 
-    const res = NextResponse.json({ success: true, role })
+    // 🔥 SET COOKIE (PAGES API STYLE)
+    res.setHeader("Set-Cookie", `session=${idToken}; Path=/; HttpOnly; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax`)
 
-    // 🔥 COOKIE UTAMA (WAJIB INI DOANG)
-    res.cookies.set('session', idToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
+    return res.status(200).json({
+      success: true,
+      role
     })
 
-    return res
-
   } catch (err) {
-    console.error('LOGIN ERROR:', err)
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    console.error("SETCOOKIE ERROR:", err)
+    return res.status(401).json({ error: "Invalid token" })
   }
 }
