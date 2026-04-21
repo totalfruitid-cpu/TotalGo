@@ -6,20 +6,20 @@ export async function getServerSideProps(context) {
   const { req } = context
   const token = req.cookies?.session
 
-  // kalau belum login → ke login
+  // ❌ belum login → masuk STORE (bukan login)
   if (!token) {
     return {
       redirect: {
-        destination: "/login",
+        destination: "/store",
         permanent: false,
       },
     }
   }
 
-  // kalau sudah login → arahkan ke dashboard (default role-based nanti di login flow)
+  // ✔ sudah login → tetap cek role via login flow (biarkan login yang handle routing)
   return {
     redirect: {
-      destination: "/login",
+      destination: "/store",
       permanent: false,
     },
   }
