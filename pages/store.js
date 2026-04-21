@@ -1,4 +1,4 @@
-// pages/store.js - VERSI SULTAN BACA STRUKTUR LU
+// pages/store.js - VERSI FIX
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
@@ -20,20 +20,15 @@ export default function Store() {
         const querySnapshot = await getDocs(collection(db, "products"))
         const data = querySnapshot.docs.map((doc) => {
           const p = doc.data() || {}
-
-          // BACA STRUKTUR PUNYA LU: harga_lite, harga_healthy, harga_sultan
           const varianFix = []
           if (p.punya_varian) {
             if (p.harga_lite) varianFix.push({ nama: "Lite", harga: Number(p.harga_lite) || 0, stok: Number(p.stok_lite) || 0 })
             if (p.harga_healthy) varianFix.push({ nama: "Healthy", harga: Number(p.harga_healthy) || 0, stok: Number(p.stok_healthy) || 0 })
             if (p.harga_sultan) varianFix.push({ nama: "Sultan", harga: Number(p.harga_sultan) || 0, stok: Number(p.stok_sultan) || 0 })
           }
-
-          // Kalo gak punya varian, pake harga & stok utama
           if (varianFix.length === 0) {
             varianFix.push({ nama: "Regular", harga: Number(p.harga) || 0, stok: Number(p.stok) || 0 })
           }
-
           return {
             id: doc.id,
             nama: String(p.nama || "Produk Misterius"),
@@ -81,7 +76,7 @@ export default function Store() {
         return prev
       }
       return {
- ...prev,
+       ...prev,
         [cartKey]: { id: product.id, nama: product.nama, varian: namaVarian, harga: harga, img: product.img, qty: qty + 1 },
       }
     })
@@ -115,8 +110,8 @@ export default function Store() {
       }))
       await addDoc(collection(db, "orders"), {
         nama, alamat, noHp, items, total, ongkir, grandTotal, metode,
-        status: "pending", // GUA GANTI DARI "baru"
-        waktu: serverTimestamp(), // GUA GANTI DARI createdAt
+        status: "pending", // FIX: huruf kecil semua
+        waktu: serverTimestamp(), // FIX: pake "waktu" bukan "createdAt"
       })
       alert("Order berhasil! Driver otw 🛵")
       setCart({}); setNama(""); setAlamat(""); setNoHp("")
