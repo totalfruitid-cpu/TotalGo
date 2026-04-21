@@ -1,4 +1,4 @@
-// pages/store.js - VERSI ANTI CRASH + COLORFUL SHOPEEFOOD
+// pages/store.js
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
@@ -19,23 +19,27 @@ export default function Store() {
       try {
         const querySnapshot = await getDocs(collection(db, "products"))
         const data = querySnapshot.docs.map((doc) => {
-          const p = doc.data()
-          // ANTI CRASH: Kalo field gak ada, kita buatin defaultnya
-          const varianAsli = Array.isArray(p.varian) && p.varian.length > 0? p.varian : []
-          const varianFinal = varianAsli.length > 0? varianAsli : [{ nama: "Regular", harga: Number(p.harga) || 0 }]
-
+          const p = doc.data() || {}
+          let varianFix = []
+          if (Array.isArray(p.varian) && p.varian.length > 0) {
+            varianFix = p.varian.map(v => ({
+              nama: String(v?.nama || "Varian"),
+              harga: Number(v?.harga) || 0
+            }))
+          } else {
+            varianFix = [{ nama: "Regular", harga: Number(p?.harga) || 0 }]
+          }
           return {
             id: doc.id,
             nama: String(p.nama || "Produk Misterius"),
             stok: Number(p.stok) || 0,
             img: String(p.img || "https://placehold.co/200x200/f97316/fff?text=TotalGo"),
-            varian: varianFinal.map(v => ({ nama: String(v.nama || "Varian"), harga: Number(v.harga) || 0 }))
+            varian: varianFix
           }
         })
         setProducts(data)
       } catch (err) {
         console.error("Firebase error:", err)
-        alert("Gagal ambil produk. Rules udah bener belum?")
       } finally {
         setLoading(false)
       }
@@ -45,15 +49,16 @@ export default function Store() {
 
   const getHarga = (product) => {
     const index = selectedVarian[product.id] || 0
-    return product.varian[index]?.harga || 0
+    return product?.varian?.[index]?.harga || 0
   }
 
   const getNamaVarian = (product) => {
     const index = selectedVarian[product.id] || 0
-    return product.varian[index]?.nama || "Regular"
+    return product?.varian?.[index]?.nama || "Regular"
   }
 
   const addToCart = (product) => {
+    if (!product) return
     const harga = getHarga(product)
     const namaVarian = getNamaVarian(product)
     const cartKey = `${product.id}_${namaVarian}`
@@ -66,7 +71,7 @@ export default function Store() {
         return prev
       }
       return {
-      ...prev,
+    ...prev,
         [cartKey]: {
           id: product.id,
           nama: product.nama,
@@ -88,9 +93,9 @@ export default function Store() {
         return newCart
       }
       return {
-      ...prev,
+    ...prev,
         [cartKey]: {
-        ...prev[cartKey],
+      ...prev[cartKey],
           qty: qty - 1,
         },
       }
@@ -197,6 +202,7 @@ export default function Store() {
                     <span>{item.qty}</span>
                     <button style={styles.btnQty} onClick={() => {
                       const prod = products.find(p => p.id === item.id)
+                      if (!prod) return
                       const index = prod.varian.findIndex(v => v.nama === item.varian)
                       setSelectedVarian({...selectedVarian, [item.id]: index})
                       addToCart(prod)
