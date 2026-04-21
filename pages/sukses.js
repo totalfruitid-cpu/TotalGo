@@ -1,3 +1,4 @@
+// pages/Sukses.js
 import { useRouter } from "next/router"
 import { useMemo, useEffect } from "react"
 import Link from "next/link"
@@ -6,21 +7,25 @@ export default function Sukses() {
   const router = useRouter()
   const { nomor } = router.query
 
-  // 🔥 Auto redirect kalo dibuka tanpa nomor
+  // Auto redirect kalo dibuka tanpa nomor atau nomor bukan angka
   useEffect(() => {
-    if (router.isReady &&!nomor) {
+    if (!router.isReady) return
+    
+    const isNomorValid = nomor && /^\d+$/.test(nomor)
+    if (!isNomorValid) {
       router.replace("/store")
     }
   }, [router.isReady, nomor])
 
-  // 🔥 Derive langsung, gak pake state
   const nomorAntrian = useMemo(() => {
-    if (!nomor) return "..."
+    if (!nomor) return ""
     return nomor
   }, [nomor])
 
-  // Jangan render apa2 kalo lagi redirect
-  if (router.isReady &&!nomor) return null
+  // Jangan render apa2 kalo lagi loading atau nomor gak valid
+  if (!router.isReady || !nomor || !/^\d+$/.test(nomor)) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
