@@ -1,4 +1,4 @@
-// pages/store.js
+// pages/store.js - VERSI SULTAN SHOPEEFOOD FINAL
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
@@ -63,7 +63,6 @@ export default function Store() {
     const namaVarian = getNamaVarian(product)
     const cartKey = `${product.id}_${namaVarian}`
     const stok = product.stok || 0
-
     setCart((prev) => {
       const qty = prev[cartKey]?.qty || 0
       if (qty >= stok) {
@@ -71,15 +70,8 @@ export default function Store() {
         return prev
       }
       return {
-    ...prev,
-        [cartKey]: {
-          id: product.id,
-          nama: product.nama,
-          varian: namaVarian,
-          harga: harga,
-          img: product.img,
-          qty: qty + 1,
-        },
+   ...prev,
+        [cartKey]: { id: product.id, nama: product.nama, varian: namaVarian, harga: harga, img: product.img, qty: qty + 1 },
       }
     })
   }
@@ -92,13 +84,7 @@ export default function Store() {
         delete newCart[cartKey]
         return newCart
       }
-      return {
-    ...prev,
-        [cartKey]: {
-      ...prev[cartKey],
-          qty: qty - 1,
-        },
-      }
+      return {...prev, [cartKey]: {...prev[cartKey], qty: qty - 1 } }
     })
   }
 
@@ -109,28 +95,21 @@ export default function Store() {
   const checkout = async () => {
     if (!nama ||!alamat ||!noHp) return alert("Isi Nama, Alamat, & No HP dulu bos")
     if (Object.keys(cart).length === 0) return alert("Keranjang kosong")
+    if (grandTotal === 0) return alert("Total 0. Pilih produk yg ada harganya.")
 
     setLoadingOrder(true)
     try {
       const items = Object.values(cart).map((item) => ({
-        id: item.id,
-        nama: item.nama,
-        varian: item.varian,
-        harga: item.harga,
-        qty: item.qty,
+        id: item.id, nama: item.nama, varian: item.varian, harga: item.harga, qty: item.qty,
       }))
-
       await addDoc(collection(db, "orders"), {
-        nama, alamat, noHp, items, total, ongkir, grandTotal, metode,
-        status: "baru",
-        createdAt: serverTimestamp(),
+        nama, alamat, noHp, items, total, ongkir, grandTotal, metode, status: "baru", createdAt: serverTimestamp(),
       })
-
       alert("Order berhasil! Driver otw 🛵")
       setCart({}); setNama(""); setAlamat(""); setNoHp("")
     } catch (err) {
       console.error("Gagal checkout:", err)
-      alert("Gagal checkout. Cek rules atau Console F12.")
+      alert("Gagal checkout. Cek harga produk di Firestore, harus > 0.")
     } finally {
       setLoadingOrder(false)
     }
@@ -140,41 +119,29 @@ export default function Store() {
 
   return (
     <>
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
-        body { font-family: 'Poppins', sans-serif; background: #f0f2f5; margin: 0; }
-      `}</style>
+      <style jsx global>{`@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap'); body { font-family: 'Poppins', sans-serif; background: #f0f2f5; margin: 0; }`}</style>
       <div style={styles.container}>
         <header style={styles.header}>
           <h1 style={styles.logo}>TotalGo Food 🛵</h1>
           <p style={styles.tagline}>Laper? Pesan Sekarang, COD Bisa!</p>
         </header>
-
         <h2 style={styles.title}>🔥 Menu Andalan</h2>
         <div style={styles.grid}>
           {products.length === 0? (
-            <p style={{gridColumn: "1/-1", textAlign: "center"}}>Menu masih kosong bos. Tambahin di Firestore.</p>
+            <p style={{gridColumn: "1/-1", textAlign: "center"}}>Menu masih kosong bos. Tambahin di Firestore dulu.</p>
           ) : (
             products.map((p) => (
               <div key={p.id} style={styles.card}>
                 <img src={p.img} alt={p.nama} style={styles.cardImg} />
                 <div style={styles.cardBody}>
                   <h3 style={styles.cardTitle}>{p.nama}</h3>
-                  <select
-                    style={styles.select}
-                    value={selectedVarian[p.id] || 0}
-                    onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}
-                  >
-                    {p.varian.map((v, i) => (
-                      <option key={i} value={i}>
-                        {v.nama} - Rp{v.harga.toLocaleString("id-ID")}
-                      </option>
-                    ))}
+                  <select style={styles.select} value={selectedVarian[p.id] || 0} onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}>
+                    {p.varian.map((v, i) => (<option key={i} value={i}>{v.nama} - Rp{v.harga.toLocaleString("id-ID")}</option>))}
                   </select>
                   <div style={styles.cardFooter}>
                     <span style={styles.price}>Rp{getHarga(p).toLocaleString("id-ID")}</span>
-                    <button style={p.stok === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={p.stok === 0}>
-                      {p.stok === 0? "Habis" : "+ Keranjang"}
+                    <button style={p.stok === 0 || getHarga(p) === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={p.stok === 0 || getHarga(p) === 0}>
+                      {p.stok === 0? "Habis" : getHarga(p) === 0? "Set Harga" : "+ Keranjang"}
                     </button>
                   </div>
                 </div>
@@ -182,7 +149,6 @@ export default function Store() {
             ))
           )}
         </div>
-
         <div style={styles.cartSection}>
           <h2 style={styles.title}>🛒 Keranjang Lu</h2>
           {Object.keys(cart).length === 0? (
@@ -210,13 +176,11 @@ export default function Store() {
                   </div>
                 </div>
               ))}
-
               <div style={styles.summary}>
                 <div style={styles.summaryRow}><span>Subtotal</span><span>Rp{total.toLocaleString("id-ID")}</span></div>
                 <div style={styles.summaryRow}><span>Ongkir ({metode})</span><span>Rp{ongkir.toLocaleString("id-ID")}</span></div>
                 <div style={styles.summaryTotal}><span>TOTAL BAYAR</span><span>Rp{grandTotal.toLocaleString("id-ID")}</span></div>
               </div>
-
               <div style={styles.form}>
                 <input type="text" placeholder="Nama Penerima" value={nama} onChange={(e) => setNama(e.target.value)} style={styles.input} />
                 <input type="text" placeholder="Alamat Lengkap" value={alamat} onChange={(e) => setAlamat(e.target.value)} style={styles.input} />
@@ -225,7 +189,7 @@ export default function Store() {
                   <option value="COD">COD - Bayar di Tempat</option>
                   <option value="Transfer">Transfer Bank</option>
                 </select>
-                <button onClick={checkout} disabled={loadingOrder} style={styles.btnCheckout}>
+                <button onClick={checkout} disabled={loadingOrder || grandTotal === 0} style={styles.btnCheckout}>
                   {loadingOrder? "NGEBUT..." : `PESAN SEKARANG - Rp${grandTotal.toLocaleString("id-ID")}`}
                 </button>
               </div>
