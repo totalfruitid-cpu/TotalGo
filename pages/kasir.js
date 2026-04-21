@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
 import { collection, query, where, onSnapshot, updateDoc, doc, orderBy } from "firebase/firestore"
 
-const PASSWORD_KASIR = "totalgo123" // GANTI PASSWORD LU DI SINI BOS
+const PASSWORD_KASIR = "kh453ull4H_" // GANTI PASSWORD LU DI SINI BOS
 
 export default function Kasir() {
   const [orders, setOrders] = useState([])
