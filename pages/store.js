@@ -1,44 +1,44 @@
 const checkout = async () => {
+  console.log("CLICK CHECKOUT")
+
+  if (!table || table.trim() === "") {
+    alert("Meja wajib diisi")
+    return
+  }
+
+  if (!cart || cart.length === 0) {
+    alert("Cart kosong")
+    return
+  }
+
   try {
-    if (!table || table.trim() === "") {
-      alert("Meja wajib diisi")
-      return
-    }
-
-    if (!cart || cart.length === 0) {
-      alert("Cart kosong")
-      return
-    }
-
     setCheckingOut(true)
 
-    const total = cart.reduce((a, b) => {
-      const harga = Number(b.harga || 0)
-      const qty = Number(b.qty || 1)
-      return a + harga * qty
+    const total = cart.reduce((sum, item) => {
+      return sum + (Number(item.harga || 0) * Number(item.qty || 1))
     }, 0)
 
     const payload = {
-      meja: table.trim(),
+      meja: String(table),
       items: cart.map(item => ({
-        nama: item.nama,
-        variant: item.variant || "lite",
+        nama: String(item.nama || ""),
+        variant: String(item.variant || "lite"),
         qty: Number(item.qty || 1),
         harga: Number(item.harga || 0)
       })),
-      total,
+      total: Number(total),
       status: "pending",
-      createdAt: new Date()
+      createdAt: Date.now() // 🔥 GANTI INI (ANTI ERROR SSR)
     }
 
-    console.log("CHECKOUT PAYLOAD:", payload)
+    const ref = collection(db, "orders")
 
-    await addDoc(collection(db, "orders"), payload)
+    await addDoc(ref, payload)
 
     setCart([])
     setTable("")
 
-    alert("Order berhasil dikirim")
+    alert("Order berhasil")
   } catch (err) {
     console.error("CHECKOUT ERROR:", err)
     alert("Checkout gagal: " + err.message)
