@@ -1,4 +1,4 @@
-// pages/kasir.js - FINAL PAKE INDEX
+// pages/kasir.js - VERSI DING.MP3 LOKAL
 import { useEffect, useState, useRef } from "react"
 import { onAuthStateChanged } from "firebase/auth"
 import {
@@ -20,12 +20,27 @@ export default function Kasir() {
   const [loading, setLoading] = useState(true)
   const prevOrderCount = useRef(0)
   const audioRef = useRef(null)
-  const [interacted, setInteracted] = useState(false)
+  const [audioUnlocked, setAudioUnlocked] = useState(false)
+
+  const unlockAudio = () => {
+    if (audioRef.current &&!audioUnlocked) {
+      audioRef.current.muted = true
+      audioRef.current.play().then(() => {
+        audioRef.current.pause()
+        audioRef.current.muted = false
+        audioRef.current.currentTime = 0
+        setAudioUnlocked(true)
+      }).catch(e => console.log("Gagal unlock:", e))
+    }
+  }
 
   useEffect(() => {
-    // Siapin audio ding
-    audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3")
+    // PAKE FILE LOKAL DARI /public/ding.mp3
+    audioRef.current = new Audio("/ding.mp3")
     audioRef.current.load()
+    audioRef.current.volume = 1.0 // VOLUME MAX
+
+    document.addEventListener('click', unlockAudio, { once: true })
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -34,7 +49,6 @@ export default function Kasir() {
         if (userDoc.exists() && userDoc.data().role === "kasir") {
           setRole("kasir")
 
-          // PAKE orderBy KARENA INDEX LU UDAH JADI
           const q = query(
             collection(db, "orders"),
             where("status", "==", "pending"),
@@ -44,16 +58,16 @@ export default function Kasir() {
           const unsubOrders = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({
               id: doc.id,
-            ...doc.data()
+           ...doc.data()
             }))
 
-            // BUNYIIN DING KALO ADA ORDER BARU NONGOL
             if (prevOrderCount.current!== 0 && data.length > prevOrderCount.current) {
-              if (interacted) {
-                audioRef.current?.play().catch(e => console.log("Gagal play:", e))
+              if (audioUnlocked) {
+                audioRef.current.currentTime = 0 // Reset biar bisa bunyi berkali2
+                audioRef.current.play().catch(e => console.log("Gagal play:", e))
               } else {
-                alert("Order baru masuk! Klik OK buat aktifin suara notif")
-                setInteracted(true)
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+                alert("🔔 ORDER BARU MASUK! Klik OK + tap layar buat aktifin suara")
               }
             }
 
@@ -62,7 +76,6 @@ export default function Kasir() {
             setLoading(false)
           }, (err) => {
             console.error(err)
-            alert("Gagal ambil data: " + err.message + ". Cek index udah Enabled belum.")
             setLoading(false)
           })
 
@@ -74,11 +87,14 @@ export default function Kasir() {
         window.location.href = "/login"
       }
     })
-    return () => unsubscribe()
-  }, [interacted])
+    return () => {
+      unsubscribe()
+      document.removeEventListener('click', unlockAudio)
+    }
+  }, [audioUnlocked])
 
   const handleSelesai = async (id) => {
-    setInteracted(true) // Biar suara bisa bunyi abis klik tombol
+    unlockAudio()
     try {
       await updateDoc(doc(db, "orders", id), {
         status: "Selesai"
@@ -88,20 +104,19 @@ export default function Kasir() {
     }
   }
 
-  const testDing = () => {
-    setInteracted(true)
-    audioRef.current?.play()
-  }
-
   if (loading) return <div>Loading...</div>
   if (role!== "kasir") return <div>403 Forbidden</div>
 
   return (
-    <div style={{ padding: 20 }} onClick={() => setInteracted(true)}>
+    <div style={{ padding: 20 }} onClick={unlockAudio}>
       <h1>Kasir Page</h1>
       <p>Login sebagai: {user?.email}</p>
-      <button onClick={testDing}>Test Suara Ding</button>
-      {!interacted && <p style={{color: 'red'}}>Klik dimana aja dulu biar suara notif aktif</p>}
+      <button onClick={unlockAudio}>Test Suara Ding</button>
+      {!audioUnlocked &&
+        <p style={{color: 'red', fontWeight: 'bold'}}>
+          Klik tombol "Test Suara Ding" atau tap layar 1x dulu biar notif bunyi
+        </p>
+      }
 
       <h2>Orderan Masuk:</h2>
       {orders.length === 0? (
@@ -110,8 +125,8 @@ export default function Kasir() {
         orders.map((order) => (
           <div key={order.id} style={{ border: "1px solid #ccc", margin: 10, padding: 10 }}>
             <p><b>Nama:</b> {order.nama}</p>
-            <p><b>Alamat:</b> {order.alamat}</p>
             <p><b>No HP:</b> {order.noHp}</p>
+            <p><b>Alamat:</b> {order.alamat}</p>
             <p><b>Total:</b> Rp{order.grandTotal?.toLocaleString("id-ID")}</p>
             <p><b>Metode:</b> {order.metode}</p>
             <p><b>Waktu:</b> {order.waktu?.toDate?.()?.toLocaleString("id-ID")}</p>
