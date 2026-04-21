@@ -1,3 +1,5 @@
+'use client'
+
 // pages/kasir.js - VERSI SULTAN + PASSWORD + DEBUG
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
@@ -47,7 +49,12 @@ export default function Kasir() {
   }
 
   const updateStatus = async (id, status) => {
-    await updateDoc(doc(db, "orders", id), { status: status })
+    try {
+      await updateDoc(doc(db, "orders", id), { status: status })
+    } catch (err) {
+      console.error("Gagal update:", err)
+      setError("Gagal update status. Cek Rules Firebase bos.")
+    }
   }
 
   // HALAMAN LOGIN KALO BELUM AUTH
