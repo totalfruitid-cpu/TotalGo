@@ -8,7 +8,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Unauthorized" })
     }
 
-    const decoded = await admin.auth().verifyIdToken(token)
+    const decoded = await admin.auth().verifySessionCookie(token, true)
     const uid = decoded.uid
 
     const doc = await admin.firestore().collection("users").doc(uid).get()
