@@ -1,7 +1,7 @@
-// pages/store.js - VERSI FIX
+// pages/store.js - VERSI FINAL FIX TOTAL
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, getDocs, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore"
 
 export default function Store() {
   const [products, setProducts] = useState([])
@@ -17,24 +17,34 @@ export default function Store() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const querySnapshot = await getDocs(collection(db, "products"))
+        const q = query(collection(db, "menu"), orderBy("nama"))
+        const querySnapshot = await getDocs(q)
+
         const data = querySnapshot.docs.map((doc) => {
           const p = doc.data() || {}
-          const varianFix = []
-          if (p.punya_varian) {
-            if (p.harga_lite) varianFix.push({ nama: "Lite", harga: Number(p.harga_lite) || 0, stok: Number(p.stok_lite) || 0 })
-            if (p.harga_healthy) varianFix.push({ nama: "Healthy", harga: Number(p.harga_healthy) || 0, stok: Number(p.stok_healthy) || 0 })
-            if (p.harga_sultan) varianFix.push({ nama: "Sultan", harga: Number(p.harga_sultan) || 0, stok: Number(p.stok_sultan) || 0 })
+
+          let varianFix = []
+          if (p.varian && String(p.varian).trim()!== "") {
+            const varianArr = String(p.varian).split(',').map(v => v.trim()).filter(v => v)
+            varianFix = varianArr.map(namaVarian => ({
+              nama: namaVarian,
+              harga: Number(p.harga) || 0,
+              stok: 999
+            }))
+          } else {
+            varianFix.push({
+              nama: "Regular",
+              harga: Number(p.harga) || 0,
+              stok: 999
+            })
           }
-          if (varianFix.length === 0) {
-            varianFix.push({ nama: "Regular", harga: Number(p.harga) || 0, stok: Number(p.stok) || 0 })
-          }
+
           return {
             id: doc.id,
             nama: String(p.nama || "Produk Misterius"),
             img: String(p.gambar_url || "https://placehold.co/200x200/f97316/fff?text=TotalGo"),
             varian: varianFix,
-            totalStok: varianFix.reduce((sum, v) => sum + v.stok, 0)
+            totalStok: 999
           }
         })
         setProducts(data)
@@ -76,7 +86,7 @@ export default function Store() {
         return prev
       }
       return {
-       ...prev,
+      ...prev,
         [cartKey]: { id: product.id, nama: product.nama, varian: namaVarian, harga: harga, img: product.img, qty: qty + 1 },
       }
     })
@@ -110,14 +120,15 @@ export default function Store() {
       }))
       await addDoc(collection(db, "orders"), {
         nama, alamat, noHp, items, total, ongkir, grandTotal, metode,
-        status: "pending", // FIX: huruf kecil semua
-        waktu: serverTimestamp(), // FIX: pake "waktu" bukan "createdAt"
+        status: "pending",
+        waktu: serverTimestamp(),
       })
       alert("Order berhasil! Driver otw 🛵")
       setCart({}); setNama(""); setAlamat(""); setNoHp("")
+      window.location.href = `/Sukses?nomor=${Math.floor(100 + Math.random() * 900)}` // Auto ke halaman sukses
     } catch (err) {
       console.error("Gagal checkout:", err)
-      alert("Gagal checkout. Cek Rules: total > 0")
+      alert("Gagal checkout: " + err.message)
     } finally {
       setLoadingOrder(false)
     }
@@ -134,25 +145,29 @@ export default function Store() {
           <p style={styles.tagline}>Laper? Pesan Sekarang, COD Bisa!</p>
         </header>
         <h2 style={styles.title}>🔥 Menu Andalan</h2>
-        <div style={styles.grid}>
-          {products.map((p) => (
-            <div key={p.id} style={styles.card}>
-              <img src={p.img} alt={p.nama} style={styles.cardImg} />
-              <div style={styles.cardBody}>
-                <h3 style={styles.cardTitle}>{p.nama}</h3>
-                <select style={styles.select} value={selectedVarian[p.id] || 0} onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}>
-                  {p.varian.map((v, i) => (<option key={i} value={i}>{v.nama} - Rp{v.harga.toLocaleString("id-ID")} | Stok: {v.stok}</option>))}
-                </select>
-                <div style={styles.cardFooter}>
-                  <span style={styles.price}>Rp{getHarga(p).toLocaleString("id-ID")}</span>
-                  <button style={getStokVarian(p) === 0 || getHarga(p) === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={getStokVarian(p) === 0 || getHarga(p) === 0}>
-                    {getStokVarian(p) === 0? "Habis" : "+ Keranjang"}
-                  </button>
+        {products.length === 0? (
+          <div style={styles.cartEmpty}>Menu belum ada bos. Tambahin di /admin dulu!</div>
+        ) : (
+          <div style={styles.grid}>
+            {products.map((p) => (
+              <div key={p.id} style={styles.card}>
+                <img src={p.img} alt={p.nama} style={styles.cardImg} />
+                <div style={styles.cardBody}>
+                  <h3 style={styles.cardTitle}>{p.nama}</h3>
+                  <select style={styles.select} value={selectedVarian[p.id] || 0} onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}>
+                    {p.varian.map((v, i) => (<option key={i} value={i}>{v.nama} - Rp{v.harga.toLocaleString("id-ID")}</option>))}
+                  </select>
+                  <div style={styles.cardFooter}>
+                    <span style={styles.price}>Rp{getHarga(p).toLocaleString("id-ID")}</span>
+                    <button style={getStokVarian(p) === 0 || getHarga(p) === 0? styles.btnDisabled : styles.btnAdd} onClick={() => addToCart(p)} disabled={getStokVarian(p) === 0 || getHarga(p) === 0}>
+                      {getStokVarian(p) === 0? "Habis" : "+ Keranjang"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <div style={styles.cartSection}>
           <h2 style={styles.title}>🛒 Keranjang Lu</h2>
           {Object.keys(cart).length === 0? (
