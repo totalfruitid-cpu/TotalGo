@@ -1,143 +1,179 @@
+// pages/store.js
 import { useEffect, useState } from "react"
-import { collection, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, increment } from "firebase/firestore"
-import { db } from "../firebase"
+import { db } from "../lib/firebase" // <-- PASTIIN ADA /lib
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
 
 export default function Store() {
   const [products, setProducts] = useState([])
-  const [cart, setCart] = useState({}) // {productId: qty}
+  const [cart, setCart] = useState({})
   const [loading, setLoading] = useState(true)
   const [nama, setNama] = useState("")
-  const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const [loadingOrder, setLoadingOrder] = useState(false)
 
+  // Ambil produk dari Firestore
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "products"), (snap) => {
-      setProducts(snap.docs.map(d => ({ id: d.id,...d.data() })))
-      setLoading(false)
-    }, () => setLoading(false))
-    return () => unsub()
+    async function fetchProducts() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "products"))
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+         ...doc.data(),
+        }))
+        setProducts(data)
+      } catch (err) {
+        console.error("Gagal ambil produk:", err)
+        alert("Gagal ambil produk. Cek Console F12.")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProducts()
   }, [])
 
-  const addQty = (id, stok) => {
-    const currentQty = cart[id] || 0
-    if (currentQty >= stok) return alert("Stok mentok bos")
-    setCart({...cart, [id]: currentQty + 1})
+  // Tambah ke keranjang
+  const addToCart = (product) => {
+    setCart((prev) => {
+      const qty = prev[product.id]?.qty || 0
+      // Cek stok client-side doang, gak ngerubah DB
+      if (qty >= product.stok) {
+        alert(`Stok ${product.nama} cuma ${product.stok}`)
+        return prev
+      }
+      return {
+       ...prev,
+        [product.id]: {
+         ...product,
+          qty: qty + 1,
+        },
+      }
+    })
   }
 
-  const subQty = (id) => {
-    const currentQty = cart[id] || 0
-    if (currentQty <= 1) {
-      const newCart = {...cart}
-      delete newCart[id]
-      setCart(newCart)
-    } else {
-      setCart({...cart, [id]: currentQty - 1})
-    }
+  // Kurangin dari keranjang
+  const removeFromCart = (productId) => {
+    setCart((prev) => {
+      const qty = prev[productId]?.qty || 0
+      if (qty <= 1) {
+        const newCart = {...prev }
+        delete newCart[productId]
+        return newCart
+      }
+      return {
+       ...prev,
+        [productId]: {
+         ...prev[productId],
+          qty: qty - 1,
+        },
+      }
+    })
   }
 
-  const totalHarga = Object.entries(cart).reduce((sum, [id, qty]) => {
-    const prod = products.find(p => p.id === id)
-    return sum + (prod?.harga || 0) * qty
-  }, 0)
+  // Total harga
+  const total = Object.values(cart).reduce(
+    (sum, item) => sum + item.harga * item.qty,
+    0
+  )
 
-  const totalItem = Object.values(cart).reduce((a, b) => a + b, 0)
-
+  // Checkout - CUMA BIKIN ORDER, GAK NGURANGIN STOK
   const checkout = async () => {
-    if (!nama.trim()) return alert("Nama kosong bos")
+    if (!nama) return alert("Isi nama dulu bos")
     if (Object.keys(cart).length === 0) return alert("Keranjang kosong")
 
-    setIsCheckingOut(true)
-
-    // 1. Validasi + kurangin stok semua item
+    setLoadingOrder(true)
     try {
-      for (const [id, qty] of Object.entries(cart)) {
-        const prod = products.find(p => p.id === id)
-        if (prod.stok < qty) {
-          throw new Error(`Stok ${prod.nama} kurang. Sisa ${prod.stok}`)
-        }
-        await updateDoc(doc(db, "products", id), { stok: increment(-qty) })
-      }
-
-      // 2. Bikin order
-      const items = Object.entries(cart).map(([id, qty]) => {
-        const p = products.find(prod => prod.id === id)
-        return { id, nama: p.nama, harga: p.harga, qty, subtotal: p.harga * qty }
-      })
+      const items = Object.values(cart).map((item) => ({
+        id: item.id,
+        nama: item.nama,
+        harga: item.harga,
+        qty: item.qty,
+      }))
 
       await addDoc(collection(db, "orders"), {
+        nama,
         items,
-        total: totalHarga,
-        nama: nama.trim(),
-        status: "pending",
-        metode: "Ambil di Tempat",
-        waktu: serverTimestamp(),
-        queue: Date.now()
+        total,
+        status: "baru",
+        createdAt: serverTimestamp(),
       })
 
-      alert("Order masuk bos! Tunggu dipanggil ya")
+      alert("Order berhasil! Cek Firestore > orders")
       setCart({})
       setNama("")
-    } catch (e) {
-      alert("Gagal checkout: " + e.message)
+    } catch (err) {
+      console.error("Gagal checkout:", err)
+      alert("Gagal checkout. Cek rules atau Console F12.")
     } finally {
-      setIsCheckingOut(false)
+      setLoadingOrder(false)
     }
   }
 
-  if (loading) return <div className="p-4 animate-pulse">Loading produk...</div>
-  if (!products.length) return <div className="p-4">Produk belum ada bos. Isi dulu di Firestore.</div>
+  if (loading) return <div style={{ padding: 20 }}>Loading...</div>
 
   return (
-    <div className="p-4 max-w-md mx-auto pb-24">
-      <h1 className="text-2xl font-bold mb-4">Store Bosku</h1>
+    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto" }}>
+      <h1>TotalGo Store - ShopeeFood Mode</h1>
 
-      <input
-        value={nama}
-        onChange={e => setNama(e.target.value)}
-        placeholder="Nama lu bos"
-        className="border p-3 mb-4 w-full rounded-lg"
-      />
-
-      {products.map((p) => (
-        <div key={p.id} className="border p-3 mb-2 rounded-lg flex justify-between items-center">
-          <div>
-            <p className="font-semibold">{p.nama}</p>
-            <p className="text-sm text-gray-600">
-              Rp{p.harga?.toLocaleString("id-ID")} | Stok: {p.stok}
-            </p>
-          </div>
-
-          {p.stok === 0? (
-            <button disabled className="bg-gray-300 text-gray-500 px-4 py-2 rounded-lg">Habis</button>
-          ) : cart[p.id]? (
-            <div className="flex items-center gap-3">
-              <button onClick={() => subQty(p.id)} className="bg-red-500 text-white w-8 h-8 rounded-lg">-</button>
-              <span className="font-bold w-4 text-center">{cart[p.id]}</span>
-              <button onClick={() => addQty(p.id, p.stok)} className="bg-green-500 text-white w-8 h-8 rounded-lg">+</button>
-            </div>
-          ) : (
-            <button onClick={() => addQty(p.id, p.stok)} className="bg-blue-500 text-white px-4 py-2 rounded-lg">
-              Beli
-            </button>
-          )}
-        </div>
-      ))}
-
-      {totalItem > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg">
-          <div className="flex justify-between items-center max-w-md mx-auto">
+      <h2>Produk</h2>
+      {products.length === 0? (
+        <p>Produk kosong. Isi dulu di Firestore → products</p>
+      ) : (
+        products.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              border: "1px solid #ccc",
+              padding: 10,
+              marginBottom: 10,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <div>
-              <p className="text-sm text-gray-600">{totalItem} item</p>
-              <p className="font-bold text-lg">Rp{totalHarga.toLocaleString("id-ID")}</p>
+              <b>{p.nama}</b> - Rp{p.harga.toLocaleString("id-ID")}
+              <br />
+              <small>Stok: {p.stok}</small>
             </div>
-            <button
-              onClick={checkout}
-              disabled={isCheckingOut}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold disabled:bg-gray-400"
-            >
-              {isCheckingOut? "Proses..." : "CHECKOUT"}
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={() => removeFromCart(p.id)}>-</button>
+              <span>{cart[p.id]?.qty || 0}</span>
+              <button onClick={() => addToCart(p)} disabled={p.stok === 0}>
+                +
+              </button>
+            </div>
           </div>
-        </div>
+        ))
+      )}
+
+      <hr style={{ margin: "20px 0" }} />
+
+      <h2>Keranjang</h2>
+      {Object.keys(cart).length === 0? (
+        <p>Keranjang kosong</p>
+      ) : (
+        <>
+          {Object.values(cart).map((item) => (
+            <div key={item.id}>
+              {item.nama} x {item.qty} = Rp
+              {(item.harga * item.qty).toLocaleString("id-ID")}
+            </div>
+          ))}
+          <h3>Total: Rp{total.toLocaleString("id-ID")}</h3>
+          <input
+            type="text"
+            placeholder="Nama lu bos"
+            value={nama}
+            onChange={(e) => setNama(e.target.value)}
+            style={{ padding: 8, width: "100%", marginBottom: 10 }}
+          />
+          <button
+            onClick={checkout}
+            disabled={loadingOrder}
+            style={{ padding: 10, width: "100%" }}
+          >
+            {loadingOrder? "Proses..." : "Checkout"}
+          </button>
+        </>
       )}
     </div>
   )
