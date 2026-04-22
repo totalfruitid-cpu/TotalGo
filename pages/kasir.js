@@ -14,73 +14,71 @@ export default function Kasir() {
   const router = useRouter()
 
   useEffect(() => {
-    audioRef.current = new Audio("/ding.mp3")
-    let unsubSnapshot = null
+  audioRef.current = new Audio("/ding.mp3")
+  let unsubSnapshot = null
 
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      if (unsubSnapshot) {
-        unsubSnapshot()
-        unsubSnapshot = null
-      }
+  const unsubAuth = onAuthStateChanged(auth, async (user) => {
+    if (unsubSnapshot) {
+      unsubSnapshot()
+      unsubSnapshot = null
+    }
 
-      if (!user) {
-        router.push("/login")
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    try {
+      const token = await getIdTokenResult(user)
+      const userRole = token.claims.role
+      console.log("ROLE USER SAAT INI:", userRole) // <-- CEK INI DI F12
+
+      // BOLEHIN KASIR ATAU ADMIN
+      if (userRole!== "kasir" && userRole!== "admin") {
+        alert("Akses ditolak. Akun ini bukan kasir/admin.")
+        await signOut(auth)
+        setLoading(false) // <-- INI YG BIKIN GAK STUCK LOADING
         return
       }
 
-      try {
-        const token = await getIdTokenResult(user)
-        const userRole = token.claims.role
-        console.log("ROLE USER:", userRole)
+      setHasAccess(true)
+      setLoading(true) // Mulai loading data
 
-        // FIX: Boleh kasir ATAU admin
-        if (userRole!== "kasir" && userRole!== "admin") {
-          alert("Akses ditolak. Akun ini bukan kasir/admin.")
-          await signOut(auth)
-          setLoading(false) // <-- WAJIB BIAR GAK STUCK
-          return
+      const q = query(
+        collection(db, "orders"),
+        where("status", "==", "pending"),
+        orderBy("waktu", "desc")
+      )
+
+      unsubSnapshot = onSnapshot(q, (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
+        const newIds = data.map(d => d.id)
+
+        if (prevIdsRef.current.length > 0) {
+          const hasNew = newIds.some(id =>!prevIdsRef.current.includes(id))
+          if (hasNew) audioRef.current?.play().catch(() => {})
         }
 
-        setHasAccess(true)
-        setLoading(true)
+        prevIdsRef.current = newIds
+        setOrders(data)
+        setLoading(false) // <-- SUKSES DAPET DATA, MATIIN LOADING
+      }, (err) => {
+        console.error("GAGAL LISTEN:", err.code, err.message)
+        setLoading(false) // <-- GAGAL DAPET DATA, MATIIN LOADING JUGA
+      })
 
-        const q = query(
-          collection(db, "orders"),
-          where("status", "==", "pending"),
-          orderBy("waktu", "desc")
-        )
-
-        unsubSnapshot = onSnapshot(q, (snap) => {
-          const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
-          const newIds = data.map(d => d.id)
-
-          if (prevIdsRef.current.length > 0) {
-            const hasNew = newIds.some(id =>!prevIdsRef.current.includes(id))
-            if (hasNew) {
-              audioRef.current?.play().catch(() => {})
-            }
-          }
-
-          prevIdsRef.current = newIds
-          setOrders(data)
-          setLoading(false)
-        }, (err) => {
-          console.error("GAGAL LISTEN:", err.code, err.message)
-          setLoading(false)
-        })
-
-      } catch (e) {
-        console.error("Gagal cek token:", e)
-        await signOut(auth)
-        setLoading(false) // <-- FIX: Tambah ini biar gak stuck kalo token error
-      }
-    })
-
-    return () => {
-      if (unsubSnapshot) unsubSnapshot()
-      unsubAuth()
+    } catch (e) {
+      console.error("Gagal cek token:", e)
+      await signOut(auth)
+      setLoading(false) // <-- TOKEN ERROR, MATIIN LOADING
     }
-  }, [router])
+  })
+
+  return () => {
+    if (unsubSnapshot) unsubSnapshot()
+    unsubAuth()
+  }
+}, [router])
 
   const handleLogout = async () => {
     await signOut(auth)
