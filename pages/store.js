@@ -15,7 +15,7 @@ export default function Store() {
 
   const [loading, setLoading] = useState(false)
 
-  // FIX 1: Bikin function format duit biar gak NaN
+  // Format duit biar gak RpNaN
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -25,50 +25,50 @@ export default function Store() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const snap = await getDocs(collection(db, "products"))
+      try {
+        const snap = await getDocs(collection(db, "products"))
+        const data = snap.docs.map(doc => {
+          const p = doc.data()
+          // Paksa harga jadi Number dari DB
+          const baseHarga = Number(p.harga) || 0
 
-      const data = snap.docs.map(doc => {
-        const p = doc.data()
-        // FIX 2: Paksa harga dari DB jadi Number, kalo kosong pake 0
-        const baseHarga = Number(p.harga) || 0
-
-        return {
-          id: doc.id,
-          nama: p.nama,
-          img: p.img || "https://placehold.co/300x200",
-          // FIX 3: Pastiin varian.harga juga Number
-          varian: p.varian?.length > 0
-           ? p.varian.map(v => ({...v, harga: Number(v.harga) || 0 }))
-            : [
-                { nama: "Lite Healthy", harga: baseHarga },
-                { nama: "Regular", harga: baseHarga + 3000 },
-                { nama: "Sultan", harga: baseHarga + 7000 }
-              ]
-        }
-      })
-
-      setProducts(data)
+          return {
+            id: doc.id,
+            nama: p.nama,
+            img: p.img || "https://placehold.co/300x200",
+            // Pastiin semua varian.harga juga Number
+            varian: p.varian?.length > 0
+             ? p.varian.map(v => ({...v, harga: Number(v.harga) || 0 }))
+              : [
+                  { nama: "Lite Healthy", harga: baseHarga },
+                  { nama: "Regular", harga: baseHarga + 3000 },
+                  { nama: "Sultan", harga: baseHarga + 7000 }
+                ]
+          }
+        })
+        setProducts(data)
+      } catch (err) {
+        console.error("Gagal load products:", err)
+        alert("Gagal ambil data produk")
+      }
     }
-
     fetchData()
   }, [])
 
   const addToCart = (product) => {
     const index = selectedVarian[product.id] || 0
     const v = product.varian[index]
-
     const key = `${product.id}_${v.nama}`
 
     setCart(prev => {
       const qty = prev[key]?.qty || 0
-
       return {
        ...prev,
         [key]: {
           id: product.id,
           nama: product.nama,
           varian: v.nama,
-          harga: v.harga,
+          harga: Number(v.harga) || 0, // Paksa Number pas masuk cart
           img: product.img,
           qty: qty + 1
         }
@@ -76,13 +76,25 @@ export default function Store() {
     })
   }
 
+  const updateQty = (key, delta) => {
+    setCart(prev => {
+      const item = prev[key]
+      if (!item) return prev
+      const newQty = item.qty + delta
+      if (newQty <= 0) {
+        const { [key]: _,...rest } = prev
+        return rest
+      }
+      return {...prev, [key]: {...item, qty: newQty } }
+    })
+  }
+
   const total = Object.values(cart).reduce(
-    (sum, item) => sum + (Number(item.harga) || 0) * (item.qty || 0),
+    (sum, item) => sum + (Number(item.harga) || 0) * (Number(item.qty) || 0),
     0
   )
 
   const checkout = async () => {
-    // Validasi form
     if (!nama ||!alamat ||!noHp) {
       return alert("Lengkapi nama, alamat, no HP!")
     }
@@ -90,17 +102,22 @@ export default function Store() {
       return alert("No HP harus 10-15 angka, tanpa +62 atau spasi")
     }
 
-    // FIX 4: Mapping ulang biar cocok sama rules Firestore
+    // Mapping biar 100% cocok sama Rules Firestore
     const itemsToSend = Object.values(cart).map(item => ({
-      name: item.nama, // 'nama' -> 'name'
-      price: item.harga, // 'harga' -> 'price'
-      qty: item.qty,
+      name: item.nama, // nama -> name
+      price: Number(item.harga) || 0, // harga -> price, paksa Number
+      qty: Number(item.qty) || 0, // paksa Number
       varian: item.varian
-      // 'id' & 'img' dibuang biar lolos rules.hasOnly()
+      // id & img sengaja dibuang biar lolos hasOnly()
     }))
 
     if (itemsToSend.length === 0) {
       return alert("Keranjang kosong!")
+    }
+
+    const finalTotal = Number(total) || 0
+    if (finalTotal === 0) {
+      return alert("Total gak boleh 0 bos!")
     }
 
     try {
@@ -110,16 +127,15 @@ export default function Store() {
         nama,
         alamat,
         noHp,
-        items: itemsToSend, // Kirim yg udah di-mapping
-        total,
-        grandTotal: total,
+        items: itemsToSend,
+        total: finalTotal,
+        grandTotal: finalTotal,
         metode,
         status: "pending",
         waktu: serverTimestamp()
       })
 
-      alert("Order berhasil masuk!")
-
+      alert("Order berhasil dikirim ke kasir!")
       setCart({})
       setNama("")
       setAlamat("")
@@ -135,36 +151,35 @@ export default function Store() {
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "sans-serif", background: "#f6f6f6" }}>
-
+    <div style={{ padding: 20, fontFamily: "sans-serif", background: "#f6f6f6", minHeight: "100vh" }}>
       <h1>🍹 TOTALGO STORE</h1>
 
       {/* PRODUCTS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
         {products.map(p => (
           <div key={p.id} style={{ background: "#fff", padding: 10, borderRadius: 10 }}>
-
-            <img src={p.img} style={{ width: "100%", borderRadius: 8 }} />
-
-            <h3>{p.nama}</h3>
-
+            <img src={p.img} alt={p.nama} style={{ width: "100%", borderRadius: 8, aspectRatio: "3/2", objectFit: "cover" }} />
+            <h3 style={{ margin: "8px 0" }}>{p.nama}</h3>
             <select
-              value={selectedVarian[p.id] || 0} // FIX 5: Kasih default value
+              value={selectedVarian[p.id] || 0}
               onChange={(e) =>
                 setSelectedVarian({
                  ...selectedVarian,
                   [p.id]: Number(e.target.value)
                 })
               }
+              style={{ width: "100%", padding: 6, marginBottom: 8 }}
             >
               {p.varian.map((v, i) => (
                 <option key={i} value={i}>
-                  {v.nama} - {formatIDR(v.harga)} {/* FIX 6: Pake formatIDR */}
+                  {v.nama} - {formatIDR(v.harga)}
                 </option>
               ))}
             </select>
-
-            <button onClick={() => addToCart(p)}>
+            <button
+              onClick={() => addToCart(p)}
+              style={{ width: "100%", padding: 8, background: "#16a34a", color: "#fff", border: "none", borderRadius: 6 }}
+            >
               + Keranjang
             </button>
           </div>
@@ -172,34 +187,46 @@ export default function Store() {
       </div>
 
       {/* CART */}
-      <h2>🛒 Keranjang</h2>
+      <h2 style={{ marginTop: 30 }}>🛒 Keranjang</h2>
+      {Object.keys(cart).length === 0 && <p>Keranjang masih kosong</p>}
 
-      {Object.values(cart).map((item, i) => (
-        <div key={i} style={{ background: "white", margin: 5, padding: 10 }}>
-          <img src={item.img} width={60} />
-          <b>{item.nama}</b>
-          <p>{item.varian}</p>
-          <p>{formatIDR(item.harga)} x {item.qty}</p> {/* FIX 7: Pake formatIDR */}
+      {Object.entries(cart).map(([key, item]) => (
+        <div key={key} style={{ background: "white", margin: "8px 0", padding: 10, borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+          <img src={item.img} width={60} height={60} style={{ borderRadius: 6, objectFit: "cover" }} />
+          <div style={{ flex: 1 }}>
+            <b>{item.nama}</b>
+            <p style={{ margin: "4px 0", fontSize: 14, color: "#555" }}>{item.varian}</p>
+            <p style={{ margin: 0 }}>{formatIDR(item.harga)} x {item.qty}</p>
+          </div>
+          <div>
+            <button onClick={() => updateQty(key, -1)} style={{ padding: "4px 8px" }}>-</button>
+            <span style={{ margin: "0 8px" }}>{item.qty}</span>
+            <button onClick={() => updateQty(key, 1)} style={{ padding: "4px 8px" }}>+</button>
+          </div>
         </div>
       ))}
 
-      <h3>Total: {formatIDR(total)}</h3> {/* FIX 8: Pake formatIDR */}
+      <h3>Total: {formatIDR(total)}</h3>
 
       {/* FORM */}
-      <input placeholder="nama" value={nama} onChange={e => setNama(e.target.value)} />
-      <input placeholder="alamat" value={alamat} onChange={e => setAlamat(e.target.value)} />
-      <input placeholder="no hp" value={noHp} onChange={e => setNoHp(e.target.value)} />
-
-      <select value={metode} onChange={e => setMetode(e.target.value)}>
-        <option value="COD">COD</option>
-        <option value="Transfer">Transfer</option>
-        <option value="QRIS">QRIS</option>
-      </select>
-
-      <button onClick={checkout} disabled={loading}>
-        {loading? "Processing..." : "CHECKOUT"}
-      </button>
-
+      <div style={{ background: "#fff", padding: 15, borderRadius: 10, marginTop: 20 }}>
+        <h3>Data Pembeli</h3>
+        <input placeholder="Nama" value={nama} onChange={e => setNama(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, boxSizing: "border-box" }} />
+        <input placeholder="Alamat Lengkap" value={alamat} onChange={e => setAlamat(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, boxSizing: "border-box" }} />
+        <input placeholder="No HP: 08xxxx" value={noHp} onChange={e => setNoHp(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, boxSizing: "border-box" }} />
+        <select value={metode} onChange={e => setMetode(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 12 }}>
+          <option value="COD">COD</option>
+          <option value="Transfer">Transfer</option>
+          <option value="QRIS">QRIS</option>
+        </select>
+        <button
+          onClick={checkout}
+          disabled={loading || total === 0}
+          style={{ width: "100%", padding: 12, background: loading? "#9ca3af" : "#dc2626", color: "#fff", border: "none", borderRadius: 8, fontSize: 16, fontWeight: "bold" }}
+        >
+          {loading? "Mengirim..." : `CHECKOUT ${formatIDR(total)}`}
+        </button>
+      </div>
     </div>
   )
 }
