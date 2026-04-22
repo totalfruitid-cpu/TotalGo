@@ -14,7 +14,6 @@ export default function Login() {
     setLoading(true)
 
     try {
-      // 🔥 Firebase login
       const userCred = await signInWithEmailAndPassword(
         auth,
         email,
@@ -23,7 +22,6 @@ export default function Login() {
 
       const idToken = await userCred.user.getIdToken()
 
-      // 🔥 ONE REQUEST ONLY (cookie + role)
       const res = await fetch("/api/sessionLogin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -36,16 +34,33 @@ export default function Login() {
         throw new Error(data.error || "Login gagal")
       }
 
-      // 🔥 direct redirect based on role
-      if (data.role === "admin") {
-        router.replace("/admin")
-      } else if (data.role === "kasir") {
-        router.replace("/kasir")
-      } else {
-        router.replace("/store")
+      // 🔥 SAFETY CHECK ROLE
+      const role = data.role || "store"
+
+      // optional: sync storage (biar UI gak blank reload)
+      localStorage.setItem("role", role)
+
+      // 🔥 redirect sinkron system
+      switch (role) {
+        case "admin":
+          router.replace("/admin")
+          break
+        case "kasir":
+          router.replace("/kasir")
+          break
+        default:
+          router.replace("/store")
       }
+
     } catch (err) {
-      alert(err.message)
+      console.error(err)
+      alert(
+        err.code === "auth/wrong-password"
+          ? "Password salah"
+          : err.code === "auth/user-not-found"
+          ? "User tidak ditemukan"
+          : err.message
+      )
     } finally {
       setLoading(false)
     }
@@ -57,12 +72,16 @@ export default function Login() {
         e.preventDefault()
         handleLogin()
       }}
+      style={{ padding: 20, fontFamily: "sans-serif" }}
     >
+      <h2>Login</h2>
+
       <input
         type="email"
         placeholder="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        style={{ display: "block", marginBottom: 10 }}
       />
 
       <input
@@ -70,6 +89,7 @@ export default function Login() {
         placeholder="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        style={{ display: "block", marginBottom: 10 }}
       />
 
       <button type="submit" disabled={loading}>
