@@ -1,8 +1,22 @@
 import Head from "next/head"
 import { useRouter } from "next/router"
+import { signOut } from "firebase/auth"
+import { auth } from "../lib/firebase"
 
 export default function Unauthorized() {
   const router = useRouter()
+
+  const handleBack = async () => {
+    try {
+      // 🔥 clear session biar gak nyangkut role lama
+      await signOut(auth)
+      localStorage.removeItem("role")
+    } catch (err) {
+      console.error(err)
+    }
+
+    router.replace("/login")
+  }
 
   return (
     <>
@@ -12,9 +26,16 @@ export default function Unauthorized() {
 
       <div style={styles.container}>
         <h1 style={styles.title}>403</h1>
-        <p style={styles.text}>Kamu tidak punya akses ke halaman ini</p>
 
-        <button style={styles.button} onClick={() => router.replace("/")}>
+        <p style={styles.text}>
+          Kamu tidak punya akses ke halaman ini
+        </p>
+
+        <p style={styles.subtext}>
+          Silakan login dengan akun admin / kasir yang sesuai
+        </p>
+
+        <button style={styles.button} onClick={handleBack}>
           Kembali ke Login
         </button>
       </div>
@@ -41,8 +62,13 @@ const styles = {
   },
   text: {
     fontSize: 16,
-    opacity: 0.8,
+    opacity: 0.9,
     marginTop: 10,
+  },
+  subtext: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginTop: 6,
     marginBottom: 20,
   },
   button: {
