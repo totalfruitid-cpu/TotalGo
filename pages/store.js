@@ -11,11 +11,10 @@ export default function Store() {
   const [nama, setNama] = useState("")
   const [alamat, setAlamat] = useState("")
   const [noHp, setNoHp] = useState("")
-  const [metode, setMetode] = useState("COD")
+  const [metode, setMetode] = useState("COD") // Default "COD" uppercase
 
   const [loading, setLoading] = useState(false)
 
-  // Format duit biar gak RpNaN
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -29,16 +28,13 @@ export default function Store() {
         const snap = await getDocs(collection(db, "products"))
         const data = snap.docs.map(doc => {
           const p = doc.data()
-          // Paksa harga jadi Number dari DB
           const baseHarga = Number(p.harga) || 0
-
           return {
             id: doc.id,
             nama: p.nama,
             img: p.img || "https://placehold.co/300x200",
-            // Pastiin semua varian.harga juga Number
             varian: p.varian?.length > 0
-             ? p.varian.map(v => ({...v, harga: Number(v.harga) || 0 }))
+            ? p.varian.map(v => ({...v, harga: Number(v.harga) || 0 }))
               : [
                   { nama: "Lite Healthy", harga: baseHarga },
                   { nama: "Regular", harga: baseHarga + 3000 },
@@ -49,7 +45,6 @@ export default function Store() {
         setProducts(data)
       } catch (err) {
         console.error("Gagal load products:", err)
-        alert("Gagal ambil data produk")
       }
     }
     fetchData()
@@ -63,12 +58,12 @@ export default function Store() {
     setCart(prev => {
       const qty = prev[key]?.qty || 0
       return {
-       ...prev,
+      ...prev,
         [key]: {
           id: product.id,
           nama: product.nama,
           varian: v.nama,
-          harga: Number(v.harga) || 0, // Paksa Number pas masuk cart
+          harga: Number(v.harga) || 0,
           img: product.img,
           qty: qty + 1
         }
@@ -95,20 +90,20 @@ export default function Store() {
   )
 
   const checkout = async () => {
-    if (!nama ||!alamat ||!noHp) {
+    // 1. VALIDASI FORM
+    if (!nama.trim() ||!alamat.trim() ||!noHp.trim()) {
       return alert("Lengkapi nama, alamat, no HP!")
     }
     if (!/^[0-9]{10,15}$/.test(noHp)) {
-      return alert("No HP harus 10-15 angka, tanpa +62 atau spasi")
+      return alert("No HP harus 10-15 angka, contoh: 08582638468")
     }
 
-    // Mapping biar 100% cocok sama Rules Firestore
+    // 2. MAPPING ITEMS - INI YG PALING KRUSIAL BUAT RULES
     const itemsToSend = Object.values(cart).map(item => ({
-      name: item.nama, // nama -> name
-      price: Number(item.harga) || 0, // harga -> price, paksa Number
-      qty: Number(item.qty) || 0, // paksa Number
-      varian: item.varian
-      // id & img sengaja dibuang biar lolos hasOnly()
+      name: String(item.nama), // Paksa string
+      price: Number(item.harga) || 0, // Paksa number
+      qty: Number(item.qty) || 0, // Paksa number
+      varian: String(item.varian) // Paksa string
     }))
 
     if (itemsToSend.length === 0) {
@@ -120,30 +115,37 @@ export default function Store() {
       return alert("Total gak boleh 0 bos!")
     }
 
+    // 3. BENTUK FINAL ORDERDATA SESUAI RULES
+    const orderData = {
+      nama: String(nama.trim()),
+      alamat: String(alamat.trim()),
+      noHp: String(noHp.trim()),
+      items: itemsToSend,
+      total: finalTotal, // number
+      grandTotal: finalTotal, // number
+      metode: String(metode), // "COD" | "Transfer" | "QRIS"
+      status: "pending", // lowercase, wajib
+      waktu: serverTimestamp() // timestamp
+    }
+
+    // 4. DEBUG WAJIB - CEK DI F12 SEBELUM KIRIM
+    console.log("=== DATA YG DIKIRIM KE FIRESTORE ===")
+    console.log(orderData)
+    console.log("Tipe total:", typeof orderData.total, orderData.total)
+    console.log("Tipe items[0].price:", typeof orderData.items[0]?.price, orderData.items[0]?.price)
+
     try {
       setLoading(true)
-
-      await addDoc(collection(db, "orders"), {
-        nama,
-        alamat,
-        noHp,
-        items: itemsToSend,
-        total: finalTotal,
-        grandTotal: finalTotal,
-        metode,
-        status: "pending",
-        waktu: serverTimestamp()
-      })
-
+      await addDoc(collection(db, "orders"), orderData)
       alert("Order berhasil dikirim ke kasir!")
       setCart({})
       setNama("")
       setAlamat("")
       setNoHp("")
       setMetode("COD")
-
     } catch (err) {
-      console.error("Checkout error:", err)
+      // 5. TANGKEP ERROR RULES BIAR JELAS
+      console.error("=== CHECKOUT DITOLAK RULES ===", err)
       alert("Gagal order: " + err.message)
     } finally {
       setLoading(false)
@@ -154,7 +156,6 @@ export default function Store() {
     <div style={{ padding: 20, fontFamily: "sans-serif", background: "#f6f6f6", minHeight: "100vh" }}>
       <h1>🍹 TOTALGO STORE</h1>
 
-      {/* PRODUCTS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
         {products.map(p => (
           <div key={p.id} style={{ background: "#fff", padding: 10, borderRadius: 10 }}>
@@ -162,12 +163,7 @@ export default function Store() {
             <h3 style={{ margin: "8px 0" }}>{p.nama}</h3>
             <select
               value={selectedVarian[p.id] || 0}
-              onChange={(e) =>
-                setSelectedVarian({
-                 ...selectedVarian,
-                  [p.id]: Number(e.target.value)
-                })
-              }
+              onChange={(e) => setSelectedVarian({...selectedVarian, [p.id]: Number(e.target.value)})}
               style={{ width: "100%", padding: 6, marginBottom: 8 }}
             >
               {p.varian.map((v, i) => (
@@ -186,7 +182,6 @@ export default function Store() {
         ))}
       </div>
 
-      {/* CART */}
       <h2 style={{ marginTop: 30 }}>🛒 Keranjang</h2>
       {Object.keys(cart).length === 0 && <p>Keranjang masih kosong</p>}
 
@@ -208,7 +203,6 @@ export default function Store() {
 
       <h3>Total: {formatIDR(total)}</h3>
 
-      {/* FORM */}
       <div style={{ background: "#fff", padding: 15, borderRadius: 10, marginTop: 20 }}>
         <h3>Data Pembeli</h3>
         <input placeholder="Nama" value={nama} onChange={e => setNama(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, boxSizing: "border-box" }} />
