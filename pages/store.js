@@ -13,8 +13,10 @@ export default function Store() {
   const [noHp, setNoHp] = useState("")
   const [metode, setMetode] = useState("COD")
 
+  const [loading, setLoading] = useState(false)
+
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       const snap = await getDocs(collection(db, "products"))
 
       const data = snap.docs.map(doc => {
@@ -35,14 +37,14 @@ export default function Store() {
       setProducts(data)
     }
 
-    fetch()
+    fetchData()
   }, [])
 
   const addToCart = (product) => {
     const index = selectedVarian[product.id] || 0
     const v = product.varian[index]
 
-    const key = product.id + "_" + v.nama
+    const key = `${product.id}_${v.nama}`
 
     setCart(prev => {
       const qty = prev[key]?.qty || 0
@@ -62,27 +64,52 @@ export default function Store() {
   }
 
   const total = Object.values(cart).reduce(
-    (sum, item) => sum + (item.harga || 0) * (item.qty || 0),
+    (sum, item) => sum + item.harga * item.qty,
     0
   )
 
   const checkout = async () => {
     const items = Object.values(cart)
 
-    await addDoc(collection(db, "orders"), {
-      nama,
-      alamat,
-      noHp,
-      items,
-      total,
-      grandTotal: total,
-      metode,
-      status: "pending",
-      waktu: serverTimestamp()
-    })
+    if (!nama || !alamat || !noHp) {
+      alert("Lengkapi data dulu!")
+      return
+    }
 
-    alert("Order masuk!")
-    setCart({})
+    if (items.length === 0) {
+      alert("Keranjang kosong!")
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      await addDoc(collection(db, "orders"), {
+        nama,
+        alamat,
+        noHp,
+        items,
+        total,
+        grandTotal: total,
+        metode,
+        status: "pending",
+        waktu: serverTimestamp()
+      })
+
+      alert("Order berhasil masuk!")
+
+      setCart({})
+      setNama("")
+      setAlamat("")
+      setNoHp("")
+      setMetode("COD")
+
+    } catch (err) {
+      console.error("Checkout error:", err)
+      alert("Gagal order: " + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -93,13 +120,12 @@ export default function Store() {
       {/* PRODUCTS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
         {products.map(p => (
-          <div key={p.id} style={{ background: "white", padding: 10, borderRadius: 10 }}>
+          <div key={p.id} style={{ background: "#fff", padding: 10, borderRadius: 10 }}>
 
             <img src={p.img} style={{ width: "100%", borderRadius: 8 }} />
 
             <h3>{p.nama}</h3>
 
-            {/* VARIAN */}
             <select
               onChange={(e) =>
                 setSelectedVarian({
@@ -134,16 +160,23 @@ export default function Store() {
         </div>
       ))}
 
-      <h3>Total: Rp{isNaN(total) ? 0 : total}</h3>
+      <h3>Total: Rp{total}</h3>
 
       {/* FORM */}
-      <input placeholder="nama" onChange={e => setNama(e.target.value)} />
-      <input placeholder="alamat" onChange={e => setAlamat(e.target.value)} />
-      <input placeholder="no hp" onChange={e => setNoHp(e.target.value)} />
+      <input placeholder="nama" value={nama} onChange={e => setNama(e.target.value)} />
+      <input placeholder="alamat" value={alamat} onChange={e => setAlamat(e.target.value)} />
+      <input placeholder="no hp" value={noHp} onChange={e => setNoHp(e.target.value)} />
 
-      <button onClick={checkout}>
-        CHECKOUT
+      <select value={metode} onChange={e => setMetode(e.target.value)}>
+        <option value="COD">COD</option>
+        <option value="Transfer">Transfer</option>
+        <option value="QRIS">QRIS</option>
+      </select>
+
+      <button onClick={checkout} disabled={loading}>
+        {loading ? "Processing..." : "CHECKOUT"}
       </button>
+
     </div>
   )
 }
