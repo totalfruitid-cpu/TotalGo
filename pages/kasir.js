@@ -8,17 +8,16 @@ import { useRouter } from "next/router"
 export default function Kasir() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isKasir, setIsKasir] = useState(false)
+  const [hasAccess, setHasAccess] = useState(false) // ganti nama biar umum
   const audioRef = useRef(null)
-  const prevIdsRef = useRef([]) // <-- FIX 3: Pake ref buat track order lama
+  const prevIdsRef = useRef([])
   const router = useRouter()
 
   useEffect(() => {
     audioRef.current = new Audio("/ding.mp3")
-    let unsubSnapshot = null // <-- FIX 1: Declare di luar biar bisa di-cleanup
+    let unsubSnapshot = null
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      // Kalo logout atau belum login, matiin listener lama dulu
       if (unsubSnapshot) {
         unsubSnapshot()
         unsubSnapshot = null
@@ -30,15 +29,19 @@ export default function Kasir() {
       }
 
       try {
-        // Cek role dari token yg fresh
         const token = await getIdTokenResult(user)
-        if (token.claims.role!== "kasir") {
-          alert("Akses ditolak. Akun ini bukan kasir.")
+        const userRole = token.claims.role
+        console.log("ROLE USER:", userRole)
+
+        // FIX: Boleh kasir ATAU admin
+        if (userRole!== "kasir" && userRole!== "admin") {
+          alert("Akses ditolak. Akun ini bukan kasir/admin.")
           await signOut(auth)
+          setLoading(false) // <-- WAJIB BIAR GAK STUCK
           return
         }
 
-        setIsKasir(true)
+        setHasAccess(true)
         setLoading(true)
 
         const q = query(
@@ -51,7 +54,6 @@ export default function Kasir() {
           const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
           const newIds = data.map(d => d.id)
 
-          // FIX 3: Logic ding yg gak stale
           if (prevIdsRef.current.length > 0) {
             const hasNew = newIds.some(id =>!prevIdsRef.current.includes(id))
             if (hasNew) {
@@ -70,23 +72,23 @@ export default function Kasir() {
       } catch (e) {
         console.error("Gagal cek token:", e)
         await signOut(auth)
+        setLoading(false) // <-- FIX: Tambah ini biar gak stuck kalo token error
       }
     })
 
-    // FIX 1: Cleanup yg bener
     return () => {
       if (unsubSnapshot) unsubSnapshot()
       unsubAuth()
     }
-  }, [router]) // <-- FIX 2: Hapus orders.length biar gak re-subscribe terus
+  }, [router])
 
   const handleLogout = async () => {
     await signOut(auth)
     router.push("/login")
   }
 
-  if (loading) return <div style={{ padding: 40 }}>Cek akses kasir...</div>
-  if (!isKasir) return null
+  if (loading) return <div style={{ padding: 40 }}>Cek akses...</div>
+  if (!hasAccess) return null
 
   return (
     <div style={{ padding: 20 }}>
