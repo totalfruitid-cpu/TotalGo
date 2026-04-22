@@ -15,22 +15,35 @@ export default function Store() {
 
   const [loading, setLoading] = useState(false)
 
+  // FIX 1: Bikin function format duit biar gak NaN
+  const formatIDR = (value) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0
+    }).format(Number(value) || 0)
+
   useEffect(() => {
     const fetchData = async () => {
       const snap = await getDocs(collection(db, "products"))
 
       const data = snap.docs.map(doc => {
         const p = doc.data()
+        // FIX 2: Paksa harga dari DB jadi Number, kalo kosong pake 0
+        const baseHarga = Number(p.harga) || 0
 
         return {
           id: doc.id,
           nama: p.nama,
           img: p.img || "https://placehold.co/300x200",
-          varian: p.varian || [
-            { nama: "Lite Healthy", harga: p.harga },
-            { nama: "Regular", harga: p.harga + 3000 },
-            { nama: "Sultan", harga: p.harga + 7000 }
-          ]
+          // FIX 3: Pastiin varian.harga juga Number
+          varian: p.varian?.length > 0
+           ? p.varian.map(v => ({...v, harga: Number(v.harga) || 0 }))
+            : [
+                { nama: "Lite Healthy", harga: baseHarga },
+                { nama: "Regular", harga: baseHarga + 3000 },
+                { nama: "Sultan", harga: baseHarga + 7000 }
+              ]
         }
       })
 
@@ -50,7 +63,7 @@ export default function Store() {
       const qty = prev[key]?.qty || 0
 
       return {
-        ...prev,
+       ...prev,
         [key]: {
           id: product.id,
           nama: product.nama,
@@ -64,21 +77,30 @@ export default function Store() {
   }
 
   const total = Object.values(cart).reduce(
-    (sum, item) => sum + item.harga * item.qty,
+    (sum, item) => sum + (Number(item.harga) || 0) * (item.qty || 0),
     0
   )
 
   const checkout = async () => {
-    const items = Object.values(cart)
-
-    if (!nama || !alamat || !noHp) {
-      alert("Lengkapi data dulu!")
-      return
+    // Validasi form
+    if (!nama ||!alamat ||!noHp) {
+      return alert("Lengkapi nama, alamat, no HP!")
+    }
+    if (!/^[0-9]{10,15}$/.test(noHp)) {
+      return alert("No HP harus 10-15 angka, tanpa +62 atau spasi")
     }
 
-    if (items.length === 0) {
-      alert("Keranjang kosong!")
-      return
+    // FIX 4: Mapping ulang biar cocok sama rules Firestore
+    const itemsToSend = Object.values(cart).map(item => ({
+      name: item.nama, // 'nama' -> 'name'
+      price: item.harga, // 'harga' -> 'price'
+      qty: item.qty,
+      varian: item.varian
+      // 'id' & 'img' dibuang biar lolos rules.hasOnly()
+    }))
+
+    if (itemsToSend.length === 0) {
+      return alert("Keranjang kosong!")
     }
 
     try {
@@ -88,7 +110,7 @@ export default function Store() {
         nama,
         alamat,
         noHp,
-        items,
+        items: itemsToSend, // Kirim yg udah di-mapping
         total,
         grandTotal: total,
         metode,
@@ -127,16 +149,17 @@ export default function Store() {
             <h3>{p.nama}</h3>
 
             <select
+              value={selectedVarian[p.id] || 0} // FIX 5: Kasih default value
               onChange={(e) =>
                 setSelectedVarian({
-                  ...selectedVarian,
+                 ...selectedVarian,
                   [p.id]: Number(e.target.value)
                 })
               }
             >
               {p.varian.map((v, i) => (
                 <option key={i} value={i}>
-                  {v.nama} - Rp{v.harga}
+                  {v.nama} - {formatIDR(v.harga)} {/* FIX 6: Pake formatIDR */}
                 </option>
               ))}
             </select>
@@ -156,11 +179,11 @@ export default function Store() {
           <img src={item.img} width={60} />
           <b>{item.nama}</b>
           <p>{item.varian}</p>
-          <p>Rp{item.harga} x {item.qty}</p>
+          <p>{formatIDR(item.harga)} x {item.qty}</p> {/* FIX 7: Pake formatIDR */}
         </div>
       ))}
 
-      <h3>Total: Rp{total}</h3>
+      <h3>Total: {formatIDR(total)}</h3> {/* FIX 8: Pake formatIDR */}
 
       {/* FORM */}
       <input placeholder="nama" value={nama} onChange={e => setNama(e.target.value)} />
@@ -174,7 +197,7 @@ export default function Store() {
       </select>
 
       <button onClick={checkout} disabled={loading}>
-        {loading ? "Processing..." : "CHECKOUT"}
+        {loading? "Processing..." : "CHECKOUT"}
       </button>
 
     </div>
