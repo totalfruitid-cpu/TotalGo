@@ -1,87 +1,104 @@
+// pages/kasir.js
 import { useEffect, useState, useRef } from "react"
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  doc,
-  updateDoc
-} from "firebase/firestore"
-import { db } from "../lib/firebase"
+import { onAuthStateChanged, getIdTokenResult, signOut } from "firebase/auth"
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
+import { auth, db } from "../lib/firebase"
+import { useRouter } from "next/router"
 
 export default function Kasir() {
   const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isKasir, setIsKasir] = useState(false)
   const audioRef = useRef(null)
+  const prevIdsRef = useRef([]) // <-- FIX 3: Pake ref buat track order lama
+  const router = useRouter()
 
   useEffect(() => {
     audioRef.current = new Audio("/ding.mp3")
+    let unsubSnapshot = null // <-- FIX 1: Declare di luar biar bisa di-cleanup
 
-    const q = query(
-      collection(db, "orders"),
-      where("status", "==", "pending"),
-      orderBy("waktu", "desc")
-    )
-
-    let prevIds = []
-
-    const unsub = onSnapshot(q, (snap) => {
-      const newOrders = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }))
-
-      // 🔥 detect order baru (lebih stabil)
-      const newIds = newOrders.map(o => o.id)
-      const hasNew = newIds.some(id => !prevIds.includes(id))
-
-      if (hasNew && prevIds.length !== 0) {
-        audioRef.current?.play()
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      // Kalo logout atau belum login, matiin listener lama dulu
+      if (unsubSnapshot) {
+        unsubSnapshot()
+        unsubSnapshot = null
       }
 
-      prevIds = newIds
-      setOrders(newOrders)
+      if (!user) {
+        router.push("/login")
+        return
+      }
+
+      try {
+        // Cek role dari token yg fresh
+        const token = await getIdTokenResult(user)
+        if (token.claims.role!== "kasir") {
+          alert("Akses ditolak. Akun ini bukan kasir.")
+          await signOut(auth)
+          return
+        }
+
+        setIsKasir(true)
+        setLoading(true)
+
+        const q = query(
+          collection(db, "orders"),
+          where("status", "==", "pending"),
+          orderBy("waktu", "desc")
+        )
+
+        unsubSnapshot = onSnapshot(q, (snap) => {
+          const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
+          const newIds = data.map(d => d.id)
+
+          // FIX 3: Logic ding yg gak stale
+          if (prevIdsRef.current.length > 0) {
+            const hasNew = newIds.some(id =>!prevIdsRef.current.includes(id))
+            if (hasNew) {
+              audioRef.current?.play().catch(() => {})
+            }
+          }
+
+          prevIdsRef.current = newIds
+          setOrders(data)
+          setLoading(false)
+        }, (err) => {
+          console.error("GAGAL LISTEN:", err.code, err.message)
+          setLoading(false)
+        })
+
+      } catch (e) {
+        console.error("Gagal cek token:", e)
+        await signOut(auth)
+      }
     })
 
-    return () => unsub()
-  }, [])
-
-  const done = async (id) => {
-    try {
-      await updateDoc(doc(db, "orders", id), {
-        status: "done"
-      })
-    } catch (err) {
-      alert("Gagal update: " + err.message)
+    // FIX 1: Cleanup yg bener
+    return () => {
+      if (unsubSnapshot) unsubSnapshot()
+      unsubAuth()
     }
+  }, [router]) // <-- FIX 2: Hapus orders.length biar gak re-subscribe terus
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push("/login")
   }
 
+  if (loading) return <div style={{ padding: 40 }}>Cek akses kasir...</div>
+  if (!isKasir) return null
+
   return (
-    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
-      <h1>🔥 KASIR LIVE</h1>
-
-      {orders.length === 0 && <p>No pending orders</p>}
-
+    <div style={{ padding: 20 }}>
+      <h1>Dashboard Kasir</h1>
+      <button onClick={handleLogout}>Logout</button>
+      {orders.length === 0? <p>Belum ada order pending</p> : null}
       {orders.map(o => (
-        <div key={o.id} style={{ border: "1px solid #ddd", margin: 10, padding: 10 }}>
-          
-          <h3>{o.nama}</h3>
-          <p>Rp{o.grandTotal}</p>
-
-          <p>Status: {o.status}</p>
-
-          <div>
-            {o.items?.map((i, idx) => (
-              <div key={idx}>
-                {i.nama} ({i.varian}) x{i.qty}
-              </div>
-            ))}
-          </div>
-
-          <button onClick={() => done(o.id)}>
-            DONE
-          </button>
-
+        <div key={o.id} style={{ border: "1px solid #ccc", padding: 10, margin: 10, borderRadius: 8 }}>
+          <b>{o.nama}</b> - {o.noHp}
+          <p style={{ margin: "4px 0" }}>{o.alamat}</p>
+          {o.items.map((i, idx) => <p key={idx} style={{ margin: 0, fontSize: 14 }}>{i.name} x{i.qty} - {i.varian}</p>)}
+          <b>Total: {o.grandTotal}</b>
         </div>
       ))}
     </div>
