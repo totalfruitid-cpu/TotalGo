@@ -13,7 +13,13 @@ export default async function handler(req, res) {
 
     // 🔥 verify token + revoke check
     const decoded = await admin.auth().verifyIdToken(idToken, true)
-    const uid = decoded.uid
+    
+    // 🔥 AMBIL ROLE LANGSUNG DARI TOKEN - BUKAN FIRESTORE
+    const role = decoded.role
+    
+    if (!role) {
+      return res.status(403).json({ error: "Role tidak ditemukan di token" })
+    }
 
     // 🔥 create session cookie
     const expiresIn = 60 * 60 * 24 * 14 * 1000 // 14 hari
@@ -21,22 +27,8 @@ export default async function handler(req, res) {
       expiresIn,
     })
 
-    // 🔥 get role from firestore (TRUSTED SOURCE)
-    const userDoc = await admin.firestore().collection("users").doc(uid).get()
-
-    if (!userDoc.exists) {
-      return res.status(403).json({ error: "User tidak terdaftar" })
-    }
-
-    const role = userDoc.data().role
-
-    if (!role) {
-      return res.status(403).json({ error: "Role tidak ditemukan" })
-    }
-
     // 🔥 cookie config secure
     const isProd = process.env.NODE_ENV === "production"
-
     const cookie = [
       `session=${sessionCookie}`,
       "Path=/",
@@ -50,10 +42,10 @@ export default async function handler(req, res) {
 
     res.setHeader("Set-Cookie", cookie)
 
-    // 🔥 atomic response (NO RACE CONDITION)
+    // 🔥 atomic response
     return res.status(200).json({
       success: true,
-      role,
+      role, // role dari token
     })
   } catch (err) {
     console.error("SESSION LOGIN ERROR:", err)
