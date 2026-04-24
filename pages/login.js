@@ -20,6 +20,11 @@ export default function Login() {
         password
       )
 
+      // 🔥 TAMBAHIN 3 BARIS INI - WAJIB
+      await userCred.user.getIdToken(true) // PAKSA REFRESH
+      const tokenResult = await userCred.user.getIdTokenResult()
+      console.log('Claims:', tokenResult.claims) // Cek role muncul gak
+
       const idToken = await userCred.user.getIdToken()
 
       const res = await fetch("/api/sessionLogin", {
@@ -34,13 +39,9 @@ export default function Login() {
         throw new Error(data.error || "Login gagal")
       }
 
-      // 🔥 SAFETY CHECK ROLE
       const role = data.role || "store"
-
-      // optional: sync storage (biar UI gak blank reload)
       localStorage.setItem("role", role)
 
-      // 🔥 redirect sinkron system
       switch (role) {
         case "admin":
           router.replace("/admin")
