@@ -1,106 +1,116 @@
-// pages/kasir.js
-import { useEffect, useState, useRef } from "react"
-import { onAuthStateChanged, getIdTokenResult, signOut } from "firebase/auth"
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore"
-import { auth, db } from "../lib/firebase"
-import { useRouter } from "next/router"
+import { useEffect, useState } from 'react'
+import { collection, onSnapshot, updateDoc, doc, query, orderBy } from 'firebase/firestore'
+import { auth, db } from '../lib/firebase'
+import OrderCard from '../components/OrderCard'
+
+const TABS = [
+  { key: 'pending', label: 'Pesanan Baru', emoji: '🔥' },
+  { key: 'processing', label: 'Diproses', emoji: '👨‍🍳' },
+  { key: 'done', label: 'Selesai', emoji: '✅' },
+]
 
 export default function Kasir() {
   const [orders, setOrders] = useState([])
+  const [role, setRole] = useState('')
   const [loading, setLoading] = useState(true)
-  const [hasAccess, setHasAccess] = useState(false) // ganti nama biar umum
-  const audioRef = useRef(null)
-  const prevIdsRef = useRef([])
-  const router = useRouter()
+  const [activeTab, setActiveTab] = useState('pending')
 
   useEffect(() => {
-  audioRef.current = new Audio("/ding.mp3")
-  let unsubSnapshot = null
+    // Ambil role dari token
+    auth.currentUser.getIdTokenResult().then(token => {
+      setRole(token.claims.role)
+    })
 
-  const unsubAuth = onAuthStateChanged(auth, async (user) => {
-    if (unsubSnapshot) {
-      unsubSnapshot()
-      unsubSnapshot = null
-    }
+    // Realtime orders - sort terbaru di atas
+    const q = query(collection(db, 'orders'), orderBy('waktu', 'desc'))
+    const unsub = onSnapshot(q, snap => {
+      setOrders(snap.docs.map(d => ({ id: d.id,...d.data() })))
+      setLoading(false)
+    })
+    return () => unsub()
+  }, [])
 
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
-    try {
-      const token = await getIdTokenResult(user)
-      const userRole = token.claims.role
-      console.log("ROLE USER SAAT INI:", userRole) // <-- CEK INI DI F12
-
-      // BOLEHIN KASIR ATAU ADMIN
-      if (userRole!== "kasir" && userRole!== "admin") {
-        alert("Akses ditolak. Akun ini bukan kasir/admin.")
-        await signOut(auth)
-        setLoading(false) // <-- INI YG BIKIN GAK STUCK LOADING
-        return
-      }
-
-      setHasAccess(true)
-      setLoading(true) // Mulai loading data
-
-      const q = query(
-        collection(db, "orders"),
-        where("status", "==", "pending"),
-        orderBy("waktu", "desc")
-      )
-
-      unsubSnapshot = onSnapshot(q, (snap) => {
-        const data = snap.docs.map(d => ({ id: d.id,...d.data() }))
-        const newIds = data.map(d => d.id)
-
-        if (prevIdsRef.current.length > 0) {
-          const hasNew = newIds.some(id =>!prevIdsRef.current.includes(id))
-          if (hasNew) audioRef.current?.play().catch(() => {})
-        }
-
-        prevIdsRef.current = newIds
-        setOrders(data)
-        setLoading(false) // <-- SUKSES DAPET DATA, MATIIN LOADING
-      }, (err) => {
-        console.error("GAGAL LISTEN:", err.code, err.message)
-        setLoading(false) // <-- GAGAL DAPET DATA, MATIIN LOADING JUGA
-      })
-
-    } catch (e) {
-      console.error("Gagal cek token:", e)
-      await signOut(auth)
-      setLoading(false) // <-- TOKEN ERROR, MATIIN LOADING
-    }
-  })
-
-  return () => {
-    if (unsubSnapshot) unsubSnapshot()
-    unsubAuth()
-  }
-}, [router])
-
-  const handleLogout = async () => {
-    await signOut(auth)
-    router.push("/login")
+  const handleTerima = async (orderId) => {
+    await updateDoc(doc(db, 'orders', orderId), { status: 'processing' })
   }
 
-  if (loading) return <div style={{ padding: 40 }}>Cek akses...</div>
-  if (!hasAccess) return null
+  const handleSelesai = async (orderId) => {
+    await updateDoc(doc(db, 'orders', orderId), { status: 'done' })
+  }
+
+  // Filter order sesuai tab
+  const filteredOrders = orders.filter(o => o.status === activeTab)
+  const counts = {
+    pending: orders.filter(o => o.status === 'pending').length,
+    processing: orders.filter(o => o.status === 'processing').length,
+    done: orders.filter(o => o.status === 'done').length,
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F97316]"></div>
+      </div>
+    )
+  }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Dashboard Kasir</h1>
-      <button onClick={handleLogout}>Logout</button>
-      {orders.length === 0? <p>Belum ada order pending</p> : null}
-      {orders.map(o => (
-        <div key={o.id} style={{ border: "1px solid #ccc", padding: 10, margin: 10, borderRadius: 8 }}>
-          <b>{o.nama}</b> - {o.noHp}
-          <p style={{ margin: "4px 0" }}>{o.alamat}</p>
-          {o.items.map((i, idx) => <p key={idx} style={{ margin: 0, fontSize: 14 }}>{i.name} x{i.qty} - {i.varian}</p>)}
-          <b>Total: {o.grandTotal}</b>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header Orange */}
+      <div className="bg-[#F97316] p-4 sticky top-0 z-10 shadow-md">
+        <h1 className="text-white font-bold text-2xl">TotalGo Kasir 🛵</h1>
+        <p className="text-orange-100 text-sm">Login sebagai: {role}</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white px-2 pt-4 sticky top-[76px] z-10 shadow-sm">
+        <div className="flex gap-2 overflow-x-auto pb-3">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition
+                ${activeTab === tab.key
+                 ? 'bg-[#F97316] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              {tab.emoji} {tab.label}
+              {counts[tab.key] > 0 && (
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs
+                  ${activeTab === tab.key? 'bg-white text-[#F97316]' : 'bg-gray-300 text-gray-700'}
+                `}>
+                  {counts[tab.key]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-      ))}
+      </div>
+
+      {/* List Order */}
+      <div className="px-4 pt-4">
+        {filteredOrders.length === 0? (
+          <div className="text-center mt-20">
+            <p className="text-6xl mb-4">📭</p>
+            <p className="text-gray-500 font-medium">
+              {activeTab === 'pending' && 'Belum ada pesanan baru'}
+              {activeTab === 'processing' && 'Tidak ada yg sedang diproses'}
+              {activeTab === 'done' && 'Belum ada pesanan selesai'}
+            </p>
+          </div>
+        ) : (
+          filteredOrders.map(order => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              role={role}
+              onTerima={handleTerima}
+              onSelesai={handleSelesai}
+            />
+          ))
+        )}
+      </div>
     </div>
   )
 }
