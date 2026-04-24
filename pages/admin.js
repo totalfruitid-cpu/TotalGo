@@ -9,18 +9,16 @@ export default function Admin() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Form tambah
-  const [nama, setNama] = useState("")
-  const [harga, setHarga] = useState("")
-  const [varian, setVarian] = useState("")
-  const [img, setImg] = useState("")
-
   // State edit
   const [editingId, setEditingId] = useState(null)
   const [editNama, setEditNama] = useState("")
-  const [editHarga, setEditHarga] = useState("")
-  const [editVarian, setEditVarian] = useState("")
-  const [editImg, setEditImg] = useState("")
+  const [editGambar, setEditGambar] = useState("")
+  const [editHargaLite, setEditHargaLite] = useState("")
+  const [editHargaHealthy, setEditHargaHealthy] = useState("")
+  const [editHargaSultan, setEditHargaSultan] = useState("")
+  const [editStokLite, setEditStokLite] = useState("")
+  const [editStokHealthy, setEditStokHealthy] = useState("")
+  const [editStokSultan, setEditStokSultan] = useState("")
 
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
@@ -29,18 +27,11 @@ export default function Admin() {
       minimumFractionDigits: 0
     }).format(Number(value) || 0)
 
-  // Proteksi: cuma admin boleh masuk
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.replace("/login")
-        return
-      }
+      if (!user) return router.replace("/login")
       const token = await user.getIdTokenResult()
-      if (token.claims.role!== 'admin') {
-        router.replace("/kasir")
-        return
-      }
+      if (token.claims.role!== 'admin') return router.replace("/kasir")
       fetchData()
     })
     return () => unsubscribe()
@@ -54,73 +45,31 @@ export default function Admin() {
     setLoading(false)
   }
 
-  const tambahProduk = async () => {
-    if (!nama ||!harga) return alert("Nama & harga wajib isi")
-
-    const hargaNumber = Number(harga)
-    if (isNaN(hargaNumber)) return alert("Harga harus angka")
-
-    let varianArr = []
-    if (varian.trim()) {
-      varianArr = varian.split(',').map(v => ({
-        nama: v.trim(),
-        harga: hargaNumber
-      }))
-    } else {
-      varianArr = [
-        { nama: "Lite Healthy", harga: hargaNumber },
-        { nama: "Regular", harga: hargaNumber + 3000 },
-        { nama: "Sultan", harga: hargaNumber + 7000 }
-      ]
-    }
-
-    await addDoc(collection(db, "products"), {
-      nama,
-      harga: hargaNumber,
-      img: img || "/menu-default.png",
-      varian: varianArr
-    })
-
-    setNama("")
-    setHarga("")
-    setVarian("")
-    setImg("")
-    fetchData()
-  }
-
-  const hapusProduk = async (id) => {
-    if (!confirm("Yakin hapus produk ini?")) return
-    await deleteDoc(doc(db, "products", id))
-    fetchData()
-  }
-
   const mulaiEdit = (p) => {
     setEditingId(p.id)
-    setEditNama(p.nama)
-    setEditHarga(String(p.harga))
-    setEditVarian(p.varian?.map(v => v.nama).join(', ') || '')
-    setEditImg(p.img || '')
+    setEditNama(p.nama || "")
+    setEditGambar(p.gambar_url || "")
+    setEditHargaLite(String(p.harga_lite || 0))
+    setEditHargaHealthy(String(p.harga_healthy || 0))
+    setEditHargaSultan(String(p.harga_sultan || 0))
+    setEditStokLite(String(p.stok_lite || 0))
+    setEditStokHealthy(String(p.stok_healthy || 0))
+    setEditStokSultan(String(p.stok_sultan || 0))
   }
 
   const simpanEdit = async () => {
-    if (!editNama ||!editHarga) return alert("Nama & harga wajib isi")
-
-    const hargaNumber = Number(editHarga)
-    if (isNaN(hargaNumber)) return alert("Harga harus angka")
-
-    let varianArr = []
-    if (editVarian.trim()) {
-      varianArr = editVarian.split(',').map(v => ({
-        nama: v.trim(),
-        harga: hargaNumber
-      }))
-    }
+    if (!editNama) return alert("Nama wajib isi")
 
     await updateDoc(doc(db, "products", editingId), {
       nama: editNama,
-      harga: hargaNumber,
-      varian: varianArr,
-      img: editImg || "/menu-default.png"
+      gambar_url: editGambar,
+      harga_lite: Number(editHargaLite),
+      harga_healthy: Number(editHargaHealthy),
+      harga_sultan: Number(editHargaSultan),
+      stok_lite: Number(editStokLite),
+      stok_healthy: Number(editStokHealthy),
+      stok_sultan: Number(editStokSultan),
+      punya_varian: true
     })
 
     setEditingId(null)
@@ -132,153 +81,59 @@ export default function Admin() {
     router.replace("/login")
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F97316]"></div>
-      </div>
-    )
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* HEADER */}
       <div className="bg-[#F97316] p-4 sticky top-0 z-20 shadow-md">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-white font-bold text-2xl">TotalGo ADMIN 👑</h1>
-            <p className="text-orange-100 text-sm">Manage Produk</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white text-[#F97316] px-4 py-2 rounded-xl font-semibold active:scale-95"
-          >
+          <h1 className="text-white font-bold text-2xl">TotalGo ADMIN 👑</h1>
+          <button onClick={handleLogout} className="bg-white text-[#F97316] px-4 py-2 rounded-xl font-semibold">
             Logout
           </button>
         </div>
       </div>
 
       <div className="p-4">
-        {/* FORM TAMBAH */}
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-4">
-          <h3 className="font-bold text-lg text-[#F97316] mb-3">Tambah Menu Baru</h3>
-          <input
-            placeholder="Nama Buah"
-            value={nama}
-            onChange={e => setNama(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl p-3 mb-3"
-          />
-          <input
-            placeholder="Harga Dasar"
-            type="number"
-            value={harga}
-            onChange={e => setHarga(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl p-3 mb-3"
-          />
-          <input
-            placeholder="Varian: Avocado,Mango (kosongin = auto 3 varian)"
-            value={varian}
-            onChange={e => setVarian(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl p-3 mb-3"
-          />
-          <input
-            placeholder="Path gambar: /menu-avocado.png"
-            value={img}
-            onChange={e => setImg(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl p-3 mb-3 text-sm"
-          />
-          <button
-            onClick={tambahProduk}
-            className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold hover:bg-orange-600 active:scale-95"
-          >
-            + Tambah Produk
-          </button>
-        </div>
-
-        {/* LIST PRODUK */}
         <h3 className="font-bold text-lg text-[#F97316] mb-3">Daftar Menu ({products.length})</h3>
-        {products.length === 0? (
-          <div className="bg-white rounded-2xl shadow-md p-8 text-center text-gray-500">
-            Belum ada produk. Tambah dulu bro 👆
+        {products.map(p => (
+          <div key={p.id} className="bg-white rounded-2xl shadow-md p-4 mb-3">
+            {editingId === p.id? (
+              <div className="space-y-2">
+                <input value={editNama} onChange={e => setEditNama(e.target.value)} placeholder="Nama" className="w-full border p-2 rounded-xl font-bold" />
+                <input value={editGambar} onChange={e => setEditGambar(e.target.value)} placeholder="/menu/menu-avocado.png" className="w-full border p-2 rounded-xl text-sm" />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={editHargaLite} onChange={e => setEditHargaLite(e.target.value)} type="number" placeholder="Harga Lite" className="border p-2 rounded-xl" />
+                  <input value={editStokLite} onChange={e => setEditStokLite(e.target.value)} type="number" placeholder="Stok Lite" className="border p-2 rounded-xl" />
+
+                  <input value={editHargaHealthy} onChange={e => setEditHargaHealthy(e.target.value)} type="number" placeholder="Harga Healthy" className="border p-2 rounded-xl" />
+                  <input value={editStokHealthy} onChange={e => setEditStokHealthy(e.target.value)} type="number" placeholder="Stok Healthy" className="border p-2 rounded-xl" />
+
+                  <input value={editHargaSultan} onChange={e => setEditHargaSultan(e.target.value)} type="number" placeholder="Harga Sultan" className="border p-2 rounded-xl" />
+                  <input value={editStokSultan} onChange={e => setEditStokSultan(e.target.value)} type="number" placeholder="Stok Sultan" className="border p-2 rounded-xl" />
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <button onClick={simpanEdit} className="flex-1 bg-green-500 text-white py-2 rounded-xl font-semibold">Simpan</button>
+                  <button onClick={() => setEditingId(null)} className="flex-1 bg-gray-300 py-2 rounded-xl font-semibold">Batal</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3 items-start">
+                <img src={p.gambar_url || '/menu-default.png'} className="w-20 h-20 rounded-xl object-cover bg-gray-100" onError={(e) => e.target.src = '/menu-default.png'} />
+                <div className="flex-1">
+                  <p className="font-bold text-gray-800">{p.nama}</p>
+                  <p className="text-xs text-gray-500">Lite: {formatIDR(p.harga_lite)} | Stok: {p.stok_lite}</p>
+                  <p className="text-xs text-gray-500">Healthy: {formatIDR(p.harga_healthy)} | Stok: {p.stok_healthy}</p>
+                  <p className="text-xs text-gray-500">Sultan: {formatIDR(p.harga_sultan)} | Stok: {p.stok_sultan}</p>
+                  <p className="text-xs text-gray-400 mt-1">{p.gambar_url}</p>
+                </div>
+                <button onClick={() => mulaiEdit(p)} className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold">Edit</button>
+              </div>
+            )}
           </div>
-        ) : (
-          products.map(p => (
-            <div key={p.id} className="bg-white rounded-2xl shadow-md p-4 mb-3">
-              {editingId === p.id? (
-                // MODE EDIT
-                <div>
-                  <input
-                    value={editNama}
-                    onChange={e => setEditNama(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl p-2 mb-2 font-bold"
-                  />
-                  <input
-                    value={editHarga}
-                    onChange={e => setEditHarga(e.target.value)}
-                    type="number"
-                    className="w-full border border-gray-300 rounded-xl p-2 mb-2"
-                  />
-                  <input
-                    value={editVarian}
-                    onChange={e => setEditVarian(e.target.value)}
-                    placeholder="Varian pisah koma"
-                    className="w-full border border-gray-300 rounded-xl p-2 mb-2"
-                  />
-                  <input
-                    value={editImg}
-                    onChange={e => setEditImg(e.target.value)}
-                    placeholder="/menu-avocado.png"
-                    className="w-full border border-gray-300 rounded-xl p-2 mb-3 text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={simpanEdit}
-                      className="flex-1 bg-green-500 text-white py-2 rounded-xl font-semibold active:scale-95"
-                    >
-                      Simpan
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-xl font-semibold active:scale-95"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // MODE VIEW
-                <div className="flex gap-3 items-center">
-                  <img
-                    src={p.img || '/menu-default.png'}
-                    alt={p.nama}
-                    className="w-16 h-16 rounded-xl object-cover bg-gray-100"
-                    onError={(e) => e.target.src = '/menu-default.png'}
-                  />
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-800">{p.nama}</p>
-                    <p className="text-[#F97316] font-semibold">{formatIDR(p.harga)}</p>
-                    <p className="text-xs text-gray-500">{p.varian?.map(v => v.nama).join(', ') || 'No varian'}</p>
-                    <p className="text-xs text-gray-400">{p.img}</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => mulaiEdit(p)}
-                      className="bg-blue-500 text-white px-4 py-2 rounded-xl font-semibold text-sm active:scale-95"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => hapusProduk(p.id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-xl font-semibold text-sm active:scale-95"
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        )}
+        ))}
       </div>
     </div>
   )
