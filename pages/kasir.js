@@ -35,8 +35,9 @@ export default function Kasir() {
     return () => unsubscribe()
   }, [])
 
+  // FIX: QUERY PAKE 'waktu' BUKAN 'createdAt'
   const listenOrders = () => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"))
+    const q = query(collection(db, "orders"), orderBy("waktu", "desc"))
     onSnapshot(q, (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
       if (data.filter(o => o.status === 'pending').length > prevOrderCount.current) {
@@ -47,6 +48,7 @@ export default function Kasir() {
     })
   }
 
+  // FIX: STATUS SESUAI RULES: 'processing', 'done', 'cancelled'
   const updateStatus = async (id, status) => {
     await updateDoc(doc(db, "orders", id), { status })
   }
@@ -75,16 +77,22 @@ export default function Kasir() {
           </div>
         </div>
 
-        {/* FILTER */}
+        {/* FILTER - FIX: PAKE STATUS SESUAI RULES */}
         <div className="flex gap-2 mb-4 overflow-x-auto">
-          {['pending', 'proses', 'selesai', 'all'].map(f => (
+          {[
+            {key: 'pending', label: '🔔 Baru'}, 
+            {key: 'processing', label: '⏳ Proses'}, 
+            {key: 'done', label: '✅ Selesai'}, 
+            {key: 'cancelled', label: '❌ Batal'},
+            {key: 'all', label: 'Semua'}
+          ].map(f => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${filter === f? 'bg-[#F97316] text-white' : 'bg-white'}`}
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${filter === f.key? 'bg-[#F97316] text-white' : 'bg-white'}`}
             >
-              {f === 'pending'? '🔔 Baru' : f === 'proses'? '⏳ Proses' : f === 'selesai'? '✅ Selesai' : 'Semua'}
-              {f === 'pending' && ` (${orders.filter(o => o.status === 'pending').length})`}
+              {f.label}
+              {f.key === 'pending' && ` (${orders.filter(o => o.status === 'pending').length})`}
             </button>
           ))}
         </div>
@@ -100,17 +108,17 @@ export default function Kasir() {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-bold text-lg">{order.nama}</p>
-                  <p className="text-sm text-gray-500">{order.noWa}</p>
-                  <p className="text-xs text-gray-400">{getTimeAgo(order.createdAt)}</p>
+                  <p className="text-sm text-gray-500">{order.noHp}</p>
+                  <p className="text-xs text-gray-400">{getTimeAgo(order.waktu)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-[#F97316] text-xl">{formatIDR(order.total)}</p>
+                  <p className="font-bold text-[#F97316] text-xl">{formatIDR(order.grandTotal)}</p>
                   <span className={`text-xs px-2 py-1 rounded-full ${
-                    order.metodeBayar === 'COD'? 'bg-green-100 text-green-700' :
-                    order.metodeBayar === 'QRIS'? 'bg-blue-100 text-blue-700' :
+                    order.metode === 'COD'? 'bg-green-100 text-green-700' :
+                    order.metode === 'QRIS'? 'bg-blue-100 text-blue-700' :
                     'bg-purple-100 text-purple-700'
                   }`}>
-                    {order.metodeBayar}
+                    {order.metode}
                   </span>
                 </div>
               </div>
@@ -131,21 +139,26 @@ export default function Kasir() {
 
               <div className="flex gap-2">
                 {order.status === 'pending' && (
-                  <button onClick={() => updateStatus(order.id, 'proses')} className="flex-1 bg-blue-500 text-white py-2 rounded-xl font-semibold">
+                  <button onClick={() => updateStatus(order.id, 'processing')} className="flex-1 bg-blue-500 text-white py-2 rounded-xl font-semibold">
                     Proses
                   </button>
                 )}
-                {order.status === 'proses' && (
-                  <button onClick={() => updateStatus(order.id, 'selesai')} className="flex-1 bg-green-500 text-white py-2 rounded-xl font-semibold">
+                {order.status === 'processing' && (
+                  <button onClick={() => updateStatus(order.id, 'done')} className="flex-1 bg-green-500 text-white py-2 rounded-xl font-semibold">
                     Selesai
                   </button>
                 )}
-                {order.status === 'selesai' && (
+                {order.status === 'done' && (
                   <div className="flex-1 bg-gray-100 text-gray-500 py-2 rounded-xl text-center font-semibold">
                     ✅ Selesai
                   </div>
                 )}
-                <a href={`https://wa.me/${order.noWa}`} target="_blank" className="bg-[#25D366] text-white px-4 py-2 rounded-xl font-semibold">
+                {order.status === 'pending' && (
+                  <button onClick={() => updateStatus(order.id, 'cancelled')} className="bg-red-500 text-white px-4 py-2 rounded-xl font-semibold">
+                    Batal
+                  </button>
+                )}
+                <a href={`https://wa.me/${order.noHp}`} target="_blank" className="bg-[#25D366] text-white px-4 py-2 rounded-xl font-semibold">
                   WA
                 </a>
               </div>
