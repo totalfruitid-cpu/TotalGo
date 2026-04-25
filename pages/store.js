@@ -12,7 +12,7 @@ export default function Store() {
   const [metodeBayar, setMetodeBayar] = useState("COD")
 
   // GANTI NOMOR WA TOKO LU DI SINI
-  const NO_WA_TOKO ="6285124441513" // ⚠️ GANTI PAKE NO LU
+  const NO_WA_TOKO = "6285124441513"
 
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
@@ -57,7 +57,7 @@ export default function Store() {
     if (exist) {
       setCart(cart.map(i =>
         i.id === p.id && i.varian === currentVarian.nama
-      ? {...i, qty: i.qty + 1 }
+     ? {...i, qty: i.qty + 1 }
           : i
       ))
     } else {
@@ -86,47 +86,46 @@ export default function Store() {
     }).filter(Boolean))
   }
 
-  // INI YG GUA BENERIN BRO - UDAH BISA BUKA WA
+  // UDAH FIX SESUAI RULES FIREBASE LU
   const handleCheckout = async () => {
-    if (cart.length === 0) return alert("Keranjang masih kosong bro")
+    if (cart.length === 0) return alert("Keranjang masih kosong")
     if (!customer.nama.trim()) return alert("Nama wajib diisi")
     if (!customer.noWa.trim()) return alert("No WA wajib diisi")
     if (!customer.alamat.trim()) return alert("Alamat wajib diisi")
 
     const total = cart.reduce((a, b) => a + b.harga * b.qty, 0)
+    const grandTotal = total
 
+    // 1. BUKA WA DULUAN
+    const listItem = cart.map(item =>
+      `• ${item.nama} ${item.varian} x${item.qty}%0A ${formatIDR(item.harga * item.qty)}`
+    ).join('%0A')
+
+    const pesanWA = `*🔥 Order Baru Total Fruit*%0A%0A*Nama:* ${customer.nama}%0A*No WA:* ${customer.noWa}%0A*Alamat:* ${customer.alamat}%0A*Pembayaran:* ${metodeBayar}%0A%0A*Pesanan:*%0A${listItem}%0A%0A*Total: ${formatIDR(grandTotal)}*%0A%0AMohon diproses ya min 🙏`
+
+    window.open(`https://wa.me/${NO_WA_TOKO}?text=${pesanWA}`, '_blank')
+
+    // 2. SIMPEN KE FIREBASE SESUAI RULES
     try {
-      // 1. Simpen ke Firebase
       await addDoc(collection(db, "orders"), {
         items: cart,
         total: total,
+        grandTotal: grandTotal,
         status: "pending",
-        metodeBayar: metodeBayar,
-        createdAt: serverTimestamp(),
+        metode: metodeBayar,
+        waktu: serverTimestamp(),
         nama: customer.nama,
-        noWa: customer.noWa,
+        noHp: customer.noWa,
         alamat: customer.alamat
       })
-
-      // 2. Bikin format chat WA
-      const listItem = cart.map(item =>
-        `• ${item.nama} ${item.varian} x${item.qty}%0A ${formatIDR(item.harga * item.qty)}`
-      ).join('%0A')
-
-      const pesanWA = `*🔥 Order Baru Total Fruit*%0A%0A*Nama:* ${customer.nama}%0A*No WA:* ${customer.noWa}%0A*Alamat:* ${customer.alamat}%0A*Pembayaran:* ${metodeBayar}%0A%0A*Pesanan:*%0A${listItem}%0A%0A*Total: ${formatIDR(total)}*%0A%0AMohon diproses ya min 🙏`
-
-      // 3. BUKA WA OTOMATIS - INI KUNCINYA
-      window.open(`https://wa.me/${NO_WA_TOKO}?text=${pesanWA}`, '_blank')
-
-      // 4. Reset
-      setCart([])
-      setShowCheckout(false)
-      setCustomer({ nama: "", noWa: "", alamat: "" })
-
     } catch (error) {
-      console.log("Error checkout:", error)
-      alert("Order gagal. Coba lagi bro")
+      console.log("Gagal simpen ke Firebase:", error)
     }
+
+    // 3. Reset
+    setCart([])
+    setShowCheckout(false)
+    setCustomer({ nama: "", noWa: "", alamat: "" })
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>
