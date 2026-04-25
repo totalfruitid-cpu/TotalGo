@@ -11,9 +11,6 @@ export default function Store() {
   const [customer, setCustomer] = useState({ nama: "", noWa: "", alamat: "" })
   const [metodeBayar, setMetodeBayar] = useState("COD")
 
-  // GANTI NOMOR WA TOKO LU DI SINI
-  const NO_WA_TOKO = "6285124441513"
-
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -57,7 +54,7 @@ export default function Store() {
     if (exist) {
       setCart(cart.map(i =>
         i.id === p.id && i.varian === currentVarian.nama
-     ? {...i, qty: i.qty + 1 }
+    ? {...i, qty: i.qty + 1 }
           : i
       ))
     } else {
@@ -86,46 +83,39 @@ export default function Store() {
     }).filter(Boolean))
   }
 
-  // UDAH FIX SESUAI RULES FIREBASE LU
+  // FIX: SESUAI RULES FIREBASE LU. ORDER MASUK DASHBOARD KASIR
   const handleCheckout = async () => {
     if (cart.length === 0) return alert("Keranjang masih kosong")
     if (!customer.nama.trim()) return alert("Nama wajib diisi")
     if (!customer.noWa.trim()) return alert("No WA wajib diisi")
     if (!customer.alamat.trim()) return alert("Alamat wajib diisi")
+    if (cart.length > 50) return alert("Maksimal 50 item")
 
     const total = cart.reduce((a, b) => a + b.harga * b.qty, 0)
-    const grandTotal = total
+    const grandTotal = total // Ongkir tambahin di sini kalo ada
 
-    // 1. BUKA WA DULUAN
-    const listItem = cart.map(item =>
-      `• ${item.nama} ${item.varian} x${item.qty}%0A ${formatIDR(item.harga * item.qty)}`
-    ).join('%0A')
-
-    const pesanWA = `*🔥 Order Baru Total Fruit*%0A%0A*Nama:* ${customer.nama}%0A*No WA:* ${customer.noWa}%0A*Alamat:* ${customer.alamat}%0A*Pembayaran:* ${metodeBayar}%0A%0A*Pesanan:*%0A${listItem}%0A%0A*Total: ${formatIDR(grandTotal)}*%0A%0AMohon diproses ya min 🙏`
-
-    window.open(`https://wa.me/${NO_WA_TOKO}?text=${pesanWA}`, '_blank')
-
-    // 2. SIMPEN KE FIREBASE SESUAI RULES
     try {
       await addDoc(collection(db, "orders"), {
         items: cart,
         total: total,
-        grandTotal: grandTotal,
-        status: "pending",
-        metode: metodeBayar,
-        waktu: serverTimestamp(),
+        grandTotal: grandTotal, // WAJIB SESUAI RULES
+        status: "pending", // WAJIB "pending"
+        metode: metodeBayar, // WAJIB 'metode' BUKAN 'metodeBayar'
+        waktu: serverTimestamp(), // WAJIB 'waktu' BUKAN 'createdAt'
         nama: customer.nama,
-        noHp: customer.noWa,
+        noHp: customer.noWa, // WAJIB 'noHp' BUKAN 'noWa'
         alamat: customer.alamat
       })
-    } catch (error) {
-      console.log("Gagal simpen ke Firebase:", error)
-    }
 
-    // 3. Reset
-    setCart([])
-    setShowCheckout(false)
-    setCustomer({ nama: "", noWa: "", alamat: "" })
+      alert("Order berhasil! Cek Dashboard Kasir")
+      setCart([])
+      setShowCheckout(false)
+      setCustomer({ nama: "", noWa: "", alamat: "" })
+
+    } catch (error) {
+      console.log("Error checkout:", error)
+      alert("Order gagal. Cek console buat detailnya")
+    }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>
@@ -224,7 +214,7 @@ export default function Store() {
       {/* MODAL CHECKOUT */}
       {showCheckout && (
         <div className="fixed inset-0 bg-black/50 z-40 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl p-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white w-full rounded-t-3xl p-4 max-h- overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-xl">Checkout</h2>
               <button onClick={() => setShowCheckout(false)} className="text-gray-500">✕</button>
