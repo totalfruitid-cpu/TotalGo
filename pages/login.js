@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
+import Link from 'next/link'
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
@@ -15,7 +16,6 @@ export default function Login() {
     let isMounted = true
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return
-
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid))
@@ -32,7 +32,7 @@ export default function Login() {
           if (isMounted) setLoading(false)
         }
       } else {
-        if (isMounted) setLoading(false) // <-- FIX NYANGKUT DI SINI
+        if (isMounted) setLoading(false)
       }
     })
     return () => { isMounted = false; unsubscribe() }
@@ -52,43 +52,60 @@ export default function Login() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="animate-pulse text-[#F97316] font-bold">Loading...</p>
+      <p className="animate-pulse text-[#F97316] font-bold text-lg">Loading...</p>
     </div>
   )
 
-  //... UI FORM LOGIN LU YG CAKEP TETEP DI SINI...
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="mb-8 text-center">
+        {/* LOGO PAKE EMOJI / SVG BIAR GAK 404 */}
+        <div className="text-6xl mb-2">🛵</div>
+        <h1 className="text-3xl font-bold text-gray-800">TotalGo</h1>
+        <p className="text-gray-500">Fresh Fruit Delivery</p>
+      </div>
+
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-[#F97316] mb-6 text-center">
-          Login TotalGO 🍓
-        </h1>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">
+          Login Kasir/Admin
+        </h2>
         <form onSubmit={handleLogin} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
-          />
+          <div>
+            <label className="text-sm text-gray-600">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full mt-1 border border-gray-200 bg-blue-50 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+              placeholder="khasbullah22@gmail.com"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full mt-1 border border-gray-200 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
+              placeholder="••••••••"
+            />
+          </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold active:scale-95 disabled:bg-gray-300"
+            className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold active:scale-95 disabled:bg-gray-300 transition-all"
           >
-            Login
+            Masuk
           </button>
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
         </form>
+        <div className="text-center mt-6">
+          <Link href="/" className="text-sm text-[#F97316] hover:underline">
+            ← Kembali ke Store
+          </Link>
+        </div>
       </div>
     </div>
   )
