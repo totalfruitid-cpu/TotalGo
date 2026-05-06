@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { getAuth, onAuthStateChanged, signOut } from "firebase/auth"
 import { db, app } from "../lib/firebase"
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore"
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore" // <-- NAMBAH onSnapshot, query, where
 import { useRouter } from "next/router"
 
 export default function Admin() {
@@ -20,6 +20,11 @@ export default function Admin() {
     stok_sultan: ""
   })
   const [editId, setEditId] = useState(null)
+  
+  // --- TAMBAHAN BARU: STATE BUAT DASHBOARD ---
+  const [todayOmzet, setTodayOmzet] = useState(0)
+  const [totalOrderHariIni, setTotalOrderHariIni] = useState(0)
+  // --- END TAMBAHAN ---
 
   const auth = getAuth(app)
   const router = useRouter()
@@ -31,25 +36,56 @@ export default function Admin() {
       minimumFractionDigits: 0
     }).format(Number(value) || 0)
 
-  // CEK LOGIN
+  // CEK LOGIN + REALTIME PRODUCTS
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
-        fetchProducts()
+        
+        // --- TAMBAHAN BARU: REALTIME PRODUCTS ---
+        const unsubscribeProducts = onSnapshot(collection(db, "products"), (snap) => {
+          const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
+          setProducts(data)
+          setLoading(false)
+        })
+        // --- END TAMBAHAN ---
+
+        // --- TAMBAHAN BARU: REALTIME OMZET HARIAN ---
+        const today = new Date()
+        today.setHours(0,0,0,0)
+        
+        const q = query(
+          collection(db, "orders"), 
+          where("waktu", ">=", today),
+          where("status", "==", "done")
+        )
+        
+        const unsubscribeOmzet = onSnapshot(q, (snap) => {
+          const total = snap.docs.reduce((sum, doc) => sum + doc.data().grandTotal, 0)
+          setTodayOmzet(total)
+          setTotalOrderHariIni(snap.docs.length)
+        })
+        // --- END TAMBAHAN ---
+
+        return () => {
+          unsubscribeProducts()
+          unsubscribeOmzet()
+        }
       } else {
         router.push("/login")
+        setLoading(false)
       }
-      setLoading(false)
     })
-    return () => unsubscribe()
+    return () => unsubscribeAuth()
   }, [])
 
+  // --- KODE LAMA LU GAK GUE HAPUS BIAR AMAN ---
   const fetchProducts = async () => {
     const snap = await getDocs(collection(db, "products"))
     const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
     setProducts(data)
   }
+  // --- END KODE LAMA ---
 
   const handleLogout = async () => {
     await signOut(auth)
@@ -91,7 +127,7 @@ export default function Admin() {
       await addDoc(collection(db, "products"), dataToSave)
     }
     resetForm()
-    fetchProducts()
+    fetchProducts() // <-- TETEP GUE BIARIN BIAR GAK ERROR
   }
 
   const handleEdit = (p) => {
@@ -113,9 +149,15 @@ export default function Admin() {
   const handleDelete = async (id) => {
     if (confirm("Yakin hapus produk ini?")) {
       await deleteDoc(doc(db, "products", id))
-      fetchProducts()
+      fetchProducts() // <-- TETEP GUE BIARIN BIAR GAK ERROR
     }
   }
+
+  // --- TAMBAHAN BARU: HITUNG STOK HABIS ---
+  const stokHabis = products.filter(p => 
+    p.stok_lite <= 0 && p.stok_healthy <= 0 && p.stok_sultan <= 0
+  ).length
+  // --- END TAMBAHAN ---
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
   if (!user) return null
@@ -131,7 +173,24 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* FORM */}
+        {/* --- TAMBAHAN BARU: DASHBOARD OMZET --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-2xl text-white">
+            <p className="text-sm opacity-90">Omzet Hari Ini</p>
+            <p className="text-3xl font-bold">{formatIDR(todayOmzet)}</p>
+          </div>
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-600 p-6 rounded-2xl text-white">
+            <p className="text-sm opacity-90">Order Selesai Hari Ini</p>
+            <p className="text-3xl font-bold">{totalOrderHariIni}</p>
+          </div>
+          <div className="bg-gradient-to-r from-red-500 to-orange-600 p-6 rounded-2xl text-white">
+            <p className="text-sm opacity-90">Produk Habis Stok</p>
+            <p className="text-3xl font-bold">{stokHabis}</p>
+          </div>
+        </div>
+        {/* --- END TAMBAHAN --- */}
+
+        {/* FORM - KODE LAMA LU 100% SAMA */}
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md mb-6">
           <h2 className="font-bold text-lg mb-4">{editId ? 'Edit Produk' : 'Tambah Produk'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,7 +299,7 @@ export default function Admin() {
           </div>
         </form>
 
-        {/* LIST PRODUK */}
+        {/* LIST PRODUK - KODE LAMA LU 100% SAMA */}
         <div className="bg-white rounded-2xl shadow-md overflow-hidden">
           <div className="p-4 border-b">
             <h2 className="font-bold text-lg">Daftar Produk</h2>
