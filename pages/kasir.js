@@ -53,13 +53,19 @@ export default function Kasir() {
     await updateDoc(doc(db, "orders", id), { status })
   }
 
+  // --- FIX #1: ANTI NULL TIMESTAMP ---
   const getTimeAgo = (timestamp) => {
-    if (!timestamp) return ""
-    const seconds = Math.floor((new Date() - timestamp.toDate()) / 1000)
-    if (seconds < 60) return `${seconds} detik lalu`
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} menit lalu`
-    return `${Math.floor(seconds / 3600)} jam lalu`
+    if (!timestamp?.toDate) return "Baru saja"
+    try {
+      const seconds = Math.floor((new Date() - timestamp.toDate()) / 1000)
+      if (seconds < 60) return `${seconds} detik lalu`
+      if (seconds < 3600) return `${Math.floor(seconds / 60)} menit lalu`
+      return `${Math.floor(seconds / 3600)} jam lalu`
+    } catch {
+      return "Baru saja"
+    }
   }
+  // --- END FIX #1 ---
 
   const filteredOrders = orders.filter(o => filter === 'all' || o.status === filter)
 
@@ -129,12 +135,16 @@ export default function Kasir() {
               </div>
 
               <div className="border-t pt-3 mb-3">
-                {order.items.map((item, i) => (
+                {/* --- FIX #2: ANTI NULL ITEMS --- */}
+                {order.items && order.items.length > 0 ? order.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm mb-1">
-                    <span>{item.qty}x {item.nama} {item.varian!== 'Regular' && `(${item.varian})`}</span>
+                    <span>{item.qty}x {item.nama} {item.varian !== 'Regular' && `(${item.varian})`}</span>
                     <span>{formatIDR(item.harga * item.qty)}</span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-xs text-gray-400">Order ini gak ada item</p>
+                )}
+                {/* --- END FIX #2 --- */}
               </div>
 
               <div className="flex gap-2">
