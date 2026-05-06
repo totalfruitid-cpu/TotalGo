@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore' // INI YG KURANG TADI
+import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../lib/firebase'
 
 export default function Login() {
@@ -11,20 +11,18 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Cek kalo udah login, langsung lempar sesuai role
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userDocRef = doc(db, 'users', user.uid)
-          const userDoc = await getDoc(userDocRef)
+          const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
             const role = userDoc.data().role
             if (role === 'kasir') router.replace('/kasir')
             else if (role === 'admin') router.replace('/admin')
-            else router.replace('/') // role lain lempar ke home
+            else router.replace('/')
           } else {
-            router.replace('/') // user gak ada di collection
+            router.replace('/')
           }
         } catch (err) {
           console.error("Gagal cek role:", err)
@@ -40,7 +38,6 @@ export default function Login() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      // Gak usah router.push disini, biar useEffect di atas yg handle
     } catch (err) {
       setError('Email atau password salah')
       setLoading(false)
@@ -48,25 +45,33 @@ export default function Login() {
   }
 
   return (
-    <div>
+    <div style={{padding: 40, fontFamily: 'sans-serif'}}>
       <h1>Login TotalGO</h1>
       <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button type="submit" disabled={loading}>
+        <div style={{marginBottom: 12}}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{padding: 8, width: 250}}
+          />
+        </div>
+        <div style={{marginBottom: 12}}>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{padding: 8, width: 250}}
+          />
+        </div>
+        <button type="submit" disabled={loading} style={{padding: '8px 16px'}}>
           {loading? 'Loading...' : 'Login'}
         </button>
-        {error && <p style={{color: 'red'}}>{error}</p>}
+        {error && <p style={{color: 'red', marginTop: 10}}>{error}</p>}
       </form>
     </div>
   )
