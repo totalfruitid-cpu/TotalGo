@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
-import { collection, onSnapshot, addDoc, serverTimestamp, doc, runTransaction } from "firebase/firestore" // <-- TAMBAH INI
+import { collection, onSnapshot, addDoc, serverTimestamp, doc, runTransaction } from "firebase/firestore"
 
 export default function Store() {
   const [products, setProducts] = useState([])
@@ -10,6 +10,7 @@ export default function Store() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [customer, setCustomer] = useState({ nama: "", noWa: "", alamat: "" })
   const [metodeBayar, setMetodeBayar] = useState("COD")
+  const [showSuccessModal, setShowSuccessModal] = useState(false) // <-- TAMBAH INI
 
   const formatIDR = (value) =>
     new Intl.NumberFormat("id-ID", {
@@ -18,7 +19,6 @@ export default function Store() {
       minimumFractionDigits: 0
     }).format(Number(value) || 0)
 
-  // --- FIX #1: PAKE onSnapshot BIAR STOK REALTIME ---
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "products"), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
@@ -27,7 +27,6 @@ export default function Store() {
     })
     return () => unsubscribe()
   }, [])
-  // --- END FIX #1 ---
 
   const getVarianList = (p) => {
     if (!p?.punya_varian) {
@@ -50,7 +49,7 @@ export default function Store() {
     if (exist) {
       setCart(cart.map(i =>
         i.id === p.id && i.varian === currentVarian.nama
-   ? {...i, qty: i.qty + 1 }
+  ? {...i, qty: i.qty + 1 }
           : i
       ))
     } else {
@@ -79,7 +78,6 @@ export default function Store() {
     }).filter(Boolean))
   }
 
-  // --- FIX #2: CHECKOUT + KURANGIN STOK PAKE TRANSACTION ---
   const handleCheckout = async () => {
     if (cart.length === 0) return alert("Keranjang masih kosong")
     if (!customer.nama.trim()) return alert("Nama wajib diisi")
@@ -92,29 +90,25 @@ export default function Store() {
 
     try {
       await runTransaction(db, async (transaction) => {
-        // 1. Cek stok semua item dulu
         for (const item of cart) {
           const productRef = doc(db, "products", item.id)
           const productSnap = await transaction.get(productRef)
           if (!productSnap.exists()) throw `Produk ${item.nama} udah gak ada`
 
           const data = productSnap.data()
-          let currentStock = 0
           let fieldStok = 'stok_lite'
-
           if (data.punya_varian) {
             if (item.varian === 'Lite') fieldStok = 'stok_lite'
             else if (item.varian === 'Healthy') fieldStok = 'stok_healthy'
             else if (item.varian === 'Sultan') fieldStok = 'stok_sultan'
           }
 
-          currentStock = data[fieldStok] || 0
+          const currentStock = data[fieldStok] || 0
           if (currentStock < item.qty) {
             throw `Stok ${item.nama} ${item.varian} kurang! Sisa ${currentStock}`
           }
         }
 
-        // 2. Bikin order
         await addDoc(collection(db, "orders"), {
           items: cart,
           total: total,
@@ -127,35 +121,33 @@ export default function Store() {
           alamat: customer.alamat
         })
 
-        // 3. Kurangin stok
         for (const item of cart) {
           const productRef = doc(db, "products", item.id)
           const productSnap = await transaction.get(productRef)
           const data = productSnap.data()
-
           let fieldStok = 'stok_lite'
           if (data.punya_varian) {
             if (item.varian === 'Lite') fieldStok = 'stok_lite'
             else if (item.varian === 'Healthy') fieldStok = 'stok_healthy'
             else if (item.varian === 'Sultan') fieldStok = 'stok_sultan'
           }
-
           const newStock = (data[fieldStok] || 0) - item.qty
           transaction.update(productRef, { [fieldStok]: newStock })
         }
       })
 
-      alert("Order berhasil! Cek Dashboard Kasir")
+      // --- FIX: GANTI ALERT JADI MODAL PRO ---
       setCart([])
       setShowCheckout(false)
       setCustomer({ nama: "", noWa: "", alamat: "" })
+      setShowSuccessModal(true) // MUNCULIN MODAL CAKEP
+      // --- END FIX ---
 
     } catch (error) {
       console.log("Error checkout:", error)
       alert("Order gagal: " + error)
     }
   }
-  // --- END FIX #2 ---
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>
 
@@ -259,7 +251,6 @@ export default function Store() {
               <button onClick={() => setShowCheckout(false)} className="text-gray-500">✕</button>
             </div>
 
-            {/* LIST ITEM */}
             {cart.length === 0? (
               <p className="text-center text-gray-500 py-8">Keranjang kosong bro</p>
             ) : (
@@ -280,7 +271,6 @@ export default function Store() {
                   </div>
                 ))}
 
-                {/* FORM DATA */}
                 <div className="mt-4 space-y-3">
                   <input
                     placeholder="Nama Lengkap"
@@ -302,7 +292,6 @@ export default function Store() {
                     rows={2}
                   />
 
-                  {/* METODE BAYAR */}
                   <div>
                     <p className="text-sm font-semibold mb-2">Metode Pembayaran:</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -319,7 +308,6 @@ export default function Store() {
                   </div>
                 </div>
 
-                {/* TOTAL */}
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between mb-4">
                     <span className="font-semibold">Total:</span>
@@ -338,6 +326,24 @@ export default function Store() {
           </div>
         </div>
       )}
+
+      {/* --- MODAL SUKSES PRO --- */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 text-center max-w-sm animate-in zoom-in duration-200">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="font-bold text-xl mb-2">Order Berhasil!</h3>
+            <p className="text-gray-600 mb-6">Pesanan kamu udah kami terima. Tunggu konfirmasi dari admin via WhatsApp ya.</p>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold active:scale-95"
+            >
+              Oke Siap
+            </button>
+          </div>
+        </div>
+      )}
+      {/* --- END MODAL SUKSES --- */}
     </div>
   )
 }
