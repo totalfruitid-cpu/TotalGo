@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
-import { auth, db } from "../lib/firebase" // <-- PASTIKAN db DI-IMPORT
-import { doc, getDoc } from "firebase/firestore" // <-- INI KUNCINYA
+import { auth, db } from "../lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 
 export default function Login() {
   const router = useRouter()
@@ -12,30 +12,46 @@ export default function Login() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [error, setError] = useState("")
 
-  // AUTO REDIRECT KALO UDAH LOGIN
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        console.log("1. User login:", user.uid)
         try {
-          // AMBIL ROLE DARI FIRESTORE, BUKAN CLAIMS
           const userDoc = await getDoc(doc(db, "users", user.uid))
-          const role = userDoc.exists()? userDoc.data().role : "store"
+          console.log("2. Doc exists:", userDoc.exists())
 
-          switch (role) {
-            case "admin":
-              router.replace("/admin")
-              break
-            case "kasir":
-              router.replace("/kasir")
-              break
-            default:
-              router.replace("/store")
+          if (!userDoc.exists()) {
+            console.log("3. GAGAL: User gak ada di collection users")
+            setError("Akun belum terdaftar di database")
+            setCheckingAuth(false)
+            await auth.signOut() // Logout paksa
+            return
           }
+
+          const data = userDoc.data()
+          console.log("4. Data Firestore:", data)
+
+          const role = data?.role || "store"
+          console.log("5. Role final:", role)
+
+          if (role === "admin") {
+            console.log("6. Lempar ke /admin")
+            router.replace("/admin")
+          } else if (role === "kasir") {
+            console.log("6. Lempar ke /kasir")
+            router.replace("/kasir")
+          } else {
+            console.log("6. Lempar ke /store")
+            router.replace("/store")
+          }
+
         } catch (err) {
-          console.error("Gagal cek role:", err)
-          setCheckingAuth(false)
+          console.error("ERROR GEDE:", err.code, err.message)
+          setError("Gagal cek role: " + err.message)
+          setCheckingAuth(false) // WAJIB biar gak stuck loading
         }
       } else {
+        console.log("User belum login")
         setCheckingAuth(false)
       }
     })
@@ -50,47 +66,17 @@ export default function Login() {
     setError("")
 
     try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password)
-
-      // AMBIL ROLE DARI FIRESTORE
-      const userDoc = await getDoc(doc(db, "users", userCred.user.uid))
-
-      if (!userDoc.exists()) {
-        throw new Error("Akun belum terdaftar di database")
-      }
-
-      const role = userDoc.data().role || "store"
-      localStorage.setItem("role", role) // Optional, buat cek di page lain
-
-      // LEMPAR SESUAI ROLE
-      switch (role) {
-        case "admin":
-          router.replace("/admin")
-          break
-        case "kasir":
-          router.replace("/kasir")
-          break
-        default:
-          router.replace("/store")
-      }
-
+      await signInWithEmailAndPassword(auth, email, password)
+      // Redirect udah dihandle useEffect di atas
     } catch (err) {
       console.error(err)
-      if (err.code === "auth/wrong-password") {
-        setError("Password salah bro")
-      } else if (err.code === "auth/user-not-found") {
-        setError("Email tidak terdaftar")
-      } else if (err.code === "auth/invalid-email") {
-        setError("Format email salah")
-      } else {
-        setError(err.message)
-      }
-    } finally {
+      if (err.code === "auth/wrong-password") setError("Password salah bro")
+      else if (err.code === "auth/user-not-found") setError("Email tidak terdaftar")
+      else setError(err.message)
       setLoading(false)
     }
   }
 
-  // Loading pas cek auth
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -119,29 +105,23 @@ export default function Login() {
 
           <form onSubmit={handleLogin}>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
               <input
                 type="email"
-                placeholder="admin@totalgo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#F97316] focus:border-transparent outline-none transition"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#F97316] focus:border-transparent outline-none"
                 required
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
               <input
                 type="password"
-                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#F97316] focus:border-transparent outline-none transition"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#F97316] focus:border-transparent outline-none"
                 required
               />
             </div>
@@ -150,35 +130,13 @@ export default function Login() {
               type="submit"
               disabled={loading}
               className={`w-full py-4 rounded-xl font-bold text-lg transition ${
-                loading
-                ? 'bg-gray-300 text-gray-500'
-                  : 'bg-[#F97316] text-white hover:bg-orange-600 active:scale-95'
+                loading? 'bg-gray-300 text-gray-500' : 'bg-[#F97316] text-white hover:bg-orange-600'
               }`}
             >
-              {loading? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Loading...
-                </div>
-              ) : (
-                'Masuk'
-              )}
+              {loading? 'Loading...' : 'Masuk'}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => router.push('/store')}
-              className="text-[#F97316] font-semibold text-sm hover:underline"
-            >
-              ← Kembali ke Store
-            </button>
-          </div>
         </div>
-
-        <p className="text-center text-gray-400 text-xs mt-6">
-          © 2026 TotalGo. All rights reserved.
-        </p>
       </div>
     </div>
   )
