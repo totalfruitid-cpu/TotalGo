@@ -17,15 +17,28 @@ export default function Login() {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
-            const role = userDoc.data().role
-            if (role === 'kasir') router.replace('/kasir')
-            else if (role === 'admin') router.replace('/admin')
-            else router.replace('/')
+            const role = userDoc.data().role?.trim() // <-- TAMBAHIN.trim()
+            console.log('ROLE KEBACA:', JSON.stringify(role)) // <-- BUAT DEBUG
+
+            if (role === 'kasir') {
+              console.log('LEMPAR KE /kasir')
+              router.replace('/kasir')
+            }
+            else if (role === 'admin') {
+              console.log('LEMPAR KE /admin')
+              router.replace('/admin')
+            }
+            else {
+              console.log('ROLE GAK MATCH, LARI KE /')
+              router.replace('/')
+            }
           } else {
+            console.log('USERDOC GAK ADA')
             router.replace('/')
           }
         } catch (err) {
           console.error("Gagal cek role:", err)
+          router.replace('/')
         }
       }
     })
@@ -38,6 +51,7 @@ export default function Login() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email, password)
+      // abis ini onAuthStateChanged yg handle
     } catch (err) {
       setError('Email atau password salah')
       setLoading(false)
