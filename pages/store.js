@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { db } from "../lib/firebase"
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, onSnapshot, addDoc, serverTimestamp, doc, runTransaction } from "firebase/firestore" // <-- TAMBAH INI
 
 export default function Store() {
   const [products, setProducts] = useState([])
@@ -18,20 +18,16 @@ export default function Store() {
       minimumFractionDigits: 0
     }).format(Number(value) || 0)
 
+  // --- FIX #1: PAKE onSnapshot BIAR STOK REALTIME ---
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const snap = await getDocs(collection(db, "products"))
-        const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
-        setProducts(data)
-      } catch (e) {
-        console.log("Error fetch:", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
+    const unsubscribe = onSnapshot(collection(db, "products"), (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id,...doc.data() }))
+      setProducts(data)
+      setLoading(false)
+    })
+    return () => unsubscribe()
   }, [])
+  // --- END FIX #1 ---
 
   const getVarianList = (p) => {
     if (!p?.punya_varian) {
@@ -54,7 +50,7 @@ export default function Store() {
     if (exist) {
       setCart(cart.map(i =>
         i.id === p.id && i.varian === currentVarian.nama
-    ? {...i, qty: i.qty + 1 }
+   ? {...i, qty: i.qty + 1 }
           : i
       ))
     } else {
@@ -83,7 +79,7 @@ export default function Store() {
     }).filter(Boolean))
   }
 
-  // FIX: SESUAI RULES FIREBASE LU. ORDER MASUK DASHBOARD KASIR
+  // --- FIX #2: CHECKOUT + KURANGIN STOK PAKE TRANSACTION ---
   const handleCheckout = async () => {
     if (cart.length === 0) return alert("Keranjang masih kosong")
     if (!customer.nama.trim()) return alert("Nama wajib diisi")
@@ -92,19 +88,61 @@ export default function Store() {
     if (cart.length > 50) return alert("Maksimal 50 item")
 
     const total = cart.reduce((a, b) => a + b.harga * b.qty, 0)
-    const grandTotal = total // Ongkir tambahin di sini kalo ada
+    const grandTotal = total
 
     try {
-      await addDoc(collection(db, "orders"), {
-        items: cart,
-        total: total,
-        grandTotal: grandTotal, // WAJIB SESUAI RULES
-        status: "pending", // WAJIB "pending"
-        metode: metodeBayar, // WAJIB 'metode' BUKAN 'metodeBayar'
-        waktu: serverTimestamp(), // WAJIB 'waktu' BUKAN 'createdAt'
-        nama: customer.nama,
-        noHp: customer.noWa, // WAJIB 'noHp' BUKAN 'noWa'
-        alamat: customer.alamat
+      await runTransaction(db, async (transaction) => {
+        // 1. Cek stok semua item dulu
+        for (const item of cart) {
+          const productRef = doc(db, "products", item.id)
+          const productSnap = await transaction.get(productRef)
+          if (!productSnap.exists()) throw `Produk ${item.nama} udah gak ada`
+
+          const data = productSnap.data()
+          let currentStock = 0
+          let fieldStok = 'stok_lite'
+
+          if (data.punya_varian) {
+            if (item.varian === 'Lite') fieldStok = 'stok_lite'
+            else if (item.varian === 'Healthy') fieldStok = 'stok_healthy'
+            else if (item.varian === 'Sultan') fieldStok = 'stok_sultan'
+          }
+
+          currentStock = data[fieldStok] || 0
+          if (currentStock < item.qty) {
+            throw `Stok ${item.nama} ${item.varian} kurang! Sisa ${currentStock}`
+          }
+        }
+
+        // 2. Bikin order
+        await addDoc(collection(db, "orders"), {
+          items: cart,
+          total: total,
+          grandTotal: grandTotal,
+          status: "pending",
+          metode: metodeBayar,
+          waktu: serverTimestamp(),
+          nama: customer.nama,
+          noHp: customer.noWa,
+          alamat: customer.alamat
+        })
+
+        // 3. Kurangin stok
+        for (const item of cart) {
+          const productRef = doc(db, "products", item.id)
+          const productSnap = await transaction.get(productRef)
+          const data = productSnap.data()
+
+          let fieldStok = 'stok_lite'
+          if (data.punya_varian) {
+            if (item.varian === 'Lite') fieldStok = 'stok_lite'
+            else if (item.varian === 'Healthy') fieldStok = 'stok_healthy'
+            else if (item.varian === 'Sultan') fieldStok = 'stok_sultan'
+          }
+
+          const newStock = (data[fieldStok] || 0) - item.qty
+          transaction.update(productRef, { [fieldStok]: newStock })
+        }
       })
 
       alert("Order berhasil! Cek Dashboard Kasir")
@@ -114,9 +152,10 @@ export default function Store() {
 
     } catch (error) {
       console.log("Error checkout:", error)
-      alert("Order gagal. Cek console buat detailnya")
+      alert("Order gagal: " + error)
     }
   }
+  // --- END FIX #2 ---
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>
 
@@ -214,7 +253,7 @@ export default function Store() {
       {/* MODAL CHECKOUT */}
       {showCheckout && (
         <div className="fixed inset-0 bg-black/50 z-40 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl p-4 max-h- overflow-y-auto">
+          <div className="bg-white w-full rounded-t-3xl p-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-xl">Checkout</h2>
               <button onClick={() => setShowCheckout(false)} className="text-gray-500">✕</button>
