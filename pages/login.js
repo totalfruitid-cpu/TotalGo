@@ -1,36 +1,42 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/router"
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
-import { auth } from "../lib/firebase"
+import { auth, db } from "../lib/firebase" // <-- PASTIKAN db DI-IMPORT
+import { doc, getDoc } from "firebase/firestore" // <-- INI KUNCINYA
 
 export default function Login() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true) // buat loading awal
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [error, setError] = useState("")
 
-  // 🔥 AUTO REDIRECT KALO UDAH LOGIN
+  // AUTO REDIRECT KALO UDAH LOGIN
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User udah login, cek role langsung lempar
-        const tokenResult = await user.getIdTokenResult()
-        const role = tokenResult.claims.role || "store"
+        try {
+          // AMBIL ROLE DARI FIRESTORE, BUKAN CLAIMS
+          const userDoc = await getDoc(doc(db, "users", user.uid))
+          const role = userDoc.exists()? userDoc.data().role : "store"
 
-        switch (role) {
-          case "admin":
-            router.replace("/admin")
-            break
-          case "kasir":
-            router.replace("/kasir")
-            break
-          default:
-            router.replace("/store")
+          switch (role) {
+            case "admin":
+              router.replace("/admin")
+              break
+            case "kasir":
+              router.replace("/kasir")
+              break
+            default:
+              router.replace("/store")
+          }
+        } catch (err) {
+          console.error("Gagal cek role:", err)
+          setCheckingAuth(false)
         }
       } else {
-        setCheckingAuth(false) // Belum login, tampilin form
+        setCheckingAuth(false)
       }
     })
 
@@ -46,24 +52,17 @@ export default function Login() {
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password)
 
-      await userCred.user.getIdToken(true)
-      const tokenResult = await userCred.user.getIdTokenResult()
-      console.log('Claims:', tokenResult.claims)
+      // AMBIL ROLE DARI FIRESTORE
+      const userDoc = await getDoc(doc(db, "users", userCred.user.uid))
 
-      const idToken = await userCred.user.getIdToken()
+      if (!userDoc.exists()) {
+        throw new Error("Akun belum terdaftar di database")
+      }
 
-      const res = await fetch("/api/sessionLogin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      })
+      const role = userDoc.data().role || "store"
+      localStorage.setItem("role", role) // Optional, buat cek di page lain
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Login gagal")
-
-      const role = data.role || "store"
-      localStorage.setItem("role", role)
-
+      // LEMPAR SESUAI ROLE
       switch (role) {
         case "admin":
           router.replace("/admin")
@@ -78,7 +77,7 @@ export default function Login() {
     } catch (err) {
       console.error(err)
       if (err.code === "auth/wrong-password") {
-        setError("Password salah")
+        setError("Password salah bro")
       } else if (err.code === "auth/user-not-found") {
         setError("Email tidak terdaftar")
       } else if (err.code === "auth/invalid-email") {
@@ -152,7 +151,7 @@ export default function Login() {
               disabled={loading}
               className={`w-full py-4 rounded-xl font-bold text-lg transition ${
                 loading
-                 ? 'bg-gray-300 text-gray-500'
+                ? 'bg-gray-300 text-gray-500'
                   : 'bg-[#F97316] text-white hover:bg-orange-600 active:scale-95'
               }`}
             >
