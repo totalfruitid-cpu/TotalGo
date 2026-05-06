@@ -9,11 +9,10 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true) // <-- loading true biar cek auth dulu
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let isMounted = true // <-- ANTI LOOP
-
+    let isMounted = true
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return
 
@@ -30,16 +29,13 @@ export default function Login() {
           }
         } catch (err) {
           console.error("Gagal cek role:", err)
-          setLoading(false) // <-- stop loading kalo error
+          if (isMounted) setLoading(false)
         }
       } else {
-        setLoading(false) // <-- stop loading kalo gak login
+        if (isMounted) setLoading(false) // <-- FIX NYANGKUT DI SINI
       }
     })
-    return () => {
-      isMounted = false
-      unsubscribe()
-    }
+    return () => { isMounted = false; unsubscribe() }
   }, [router])
 
   const handleLogin = async (e) => {
@@ -54,13 +50,13 @@ export default function Login() {
     }
   }
 
-  // PAS LOADING CEK AUTH, JANGAN TAMPILIN FORM DULU
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <p className="animate-pulse text-[#F97316] font-bold">Loading...</p>
     </div>
   )
 
+  //... UI FORM LOGIN LU YG CAKEP TETEP DI SINI...
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm">
@@ -89,7 +85,7 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold active:scale-95 disabled:bg-gray-300"
           >
-            {loading? 'Loading...' : 'Login'}
+            Login
           </button>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         </form>
