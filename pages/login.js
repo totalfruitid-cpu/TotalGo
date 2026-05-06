@@ -9,40 +9,37 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // <-- loading true biar cek auth dulu
 
   useEffect(() => {
+    let isMounted = true // <-- ANTI LOOP
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!isMounted) return
+
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid))
           if (userDoc.exists()) {
-            const role = userDoc.data().role?.trim() // <-- TAMBAHIN.trim()
-            console.log('ROLE KEBACA:', JSON.stringify(role)) // <-- BUAT DEBUG
-
-            if (role === 'kasir') {
-              console.log('LEMPAR KE /kasir')
-              router.replace('/kasir')
-            }
-            else if (role === 'admin') {
-              console.log('LEMPAR KE /admin')
-              router.replace('/admin')
-            }
-            else {
-              console.log('ROLE GAK MATCH, LARI KE /')
-              router.replace('/')
-            }
+            const role = userDoc.data().role?.trim()
+            if (role === 'kasir') router.replace('/kasir')
+            else if (role === 'admin') router.replace('/admin')
+            else router.replace('/')
           } else {
-            console.log('USERDOC GAK ADA')
             router.replace('/')
           }
         } catch (err) {
           console.error("Gagal cek role:", err)
-          router.replace('/')
+          setLoading(false) // <-- stop loading kalo error
         }
+      } else {
+        setLoading(false) // <-- stop loading kalo gak login
       }
     })
-    return () => unsubscribe()
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [router])
 
   const handleLogin = async (e) => {
@@ -51,42 +48,52 @@ export default function Login() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      // abis ini onAuthStateChanged yg handle
     } catch (err) {
       setError('Email atau password salah')
       setLoading(false)
     }
   }
 
+  // PAS LOADING CEK AUTH, JANGAN TAMPILIN FORM DULU
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <p className="animate-pulse text-[#F97316] font-bold">Loading...</p>
+    </div>
+  )
+
   return (
-    <div style={{padding: 40, fontFamily: 'sans-serif'}}>
-      <h1>Login TotalGO</h1>
-      <form onSubmit={handleLogin}>
-        <div style={{marginBottom: 12}}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm">
+        <h1 className="text-2xl font-bold text-[#F97316] mb-6 text-center">
+          Login TotalGO 🍓
+        </h1>
+        <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{padding: 8, width: 250}}
+            className="w-full border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
           />
-        </div>
-        <div style={{marginBottom: 12}}>
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{padding: 8, width: 250}}
+            className="w-full border p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F97316]"
           />
-        </div>
-        <button type="submit" disabled={loading} style={{padding: '8px 16px'}}>
-          {loading? 'Loading...' : 'Login'}
-        </button>
-        {error && <p style={{color: 'red', marginTop: 10}}>{error}</p>}
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#F97316] text-white py-3 rounded-xl font-bold active:scale-95 disabled:bg-gray-300"
+          >
+            {loading? 'Loading...' : 'Login'}
+          </button>
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        </form>
+      </div>
     </div>
   )
 }
