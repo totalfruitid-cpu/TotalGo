@@ -12,7 +12,7 @@ export default function Kasir() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace('/login') // PAKE REPLACE BIAR GAK NUMPUK HISTORY
+        router.replace('/login')
         return
       }
 
@@ -21,20 +21,18 @@ export default function Kasir() {
         const userDoc = await getDoc(userDocRef)
 
         if (!userDoc.exists()) {
-          console.log("User gak ada di collection users")
           router.replace('/unauthorized')
           return
         }
 
         const data = userDoc.data()
         if (data.role!== 'kasir') {
-          console.log("Role bukan kasir:", data.role)
-          router.replace('/unauthorized') // atau '/'
+          router.replace('/unauthorized')
           return
         }
 
         setUserData(data)
-        setLoading(false) // INI KUNCINYA
+        setLoading(false)
       } catch (error) {
         console.error("Error cek role:", error)
         router.replace('/login')
@@ -44,12 +42,13 @@ export default function Kasir() {
     return () => unsubscribe()
   }, [router])
 
-  if (loading) return <div>Loading Dashboard Kasir...</div>
+  if (loading) return <div style={{padding: 40}}>Loading Dashboard Kasir...</div>
 
   return (
-    <div>
+    <div style={{padding: 40, fontFamily: 'sans-serif'}}>
       <h1>Dashboard Kasir</h1>
       <p>Halo {userData?.nama}</p>
+      <button onClick={() => auth.signOut()}>Logout</button>
     </div>
   )
 }
